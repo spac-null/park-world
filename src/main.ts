@@ -117,10 +117,11 @@ async function main() {
       wingR.rotation.z = -0.18 - flapAnim
     }
 
-    // Flight bob — phase accumulator avoids jumps when speed/freq changes on flap
+    // Flight bob — fades out after last flap so movement doesn't echo
     const bobFreq = 2.0 + flight.speed * 0.05
     bobPhase += bobFreq * dt * Math.PI * 2
-    const bobAmp  = flight.landed ? 0 : Math.min(flight.speed / 14, 1) * 0.18
+    const bobFade = Math.max(0, 1 - Math.max(0, flight.timeSinceLastFlap - 0.3) / 0.4)
+    const bobAmp  = flight.landed ? 0 : Math.min(flight.speed / 14, 1) * 0.18 * bobFade
     const bob = Math.sin(bobPhase) * bobAmp
 
     squashTimer = Math.max(0, squashTimer - dt)
