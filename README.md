@@ -101,6 +101,31 @@ sudo systemctl restart park-server   # on trident
 
 ---
 
+## Asset sources (free, CC0)
+
+All load client-side — server never sees them, multiplayer unaffected. Slow connections see late pop-in but can still fly and connect fine.
+
+| What | Source | Format |
+|------|--------|--------|
+| PBR textures (grass, rock, dirt, bark) | polyhaven.com / ambientcg.com | JPG → `PBRMaterial` |
+| Low-poly trees, rocks, nature | kenney.nl / quaternius.com | GLB → `SceneLoader.ImportMesh` |
+| Searchable low-poly models | poly.pizza | GLB |
+| HDRI sky | polyhaven.com | HDR → `CubeTexture` |
+
+```ts
+// Texture from URL
+mat.diffuseTexture = new Texture("https://...", scene)
+
+// GLB model
+SceneLoader.ImportMesh("", "https://...", "tree.glb", scene, (meshes) => {
+  meshes[0].position.set(x, y, z)
+})
+```
+
+Biggest visual jump for least work: terrain PBR textures first, then replace procedural trees/rocks with Kenney assets, then HDRI sky.
+
+---
+
 ## Direction
 
 The game needs three more layers to feel complete:
