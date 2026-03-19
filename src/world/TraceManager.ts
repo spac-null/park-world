@@ -68,16 +68,14 @@ export class TraceManager {
     ctx.fillStyle = col
     ctx.fillText(name.slice(0, 26), TEX_W / 2, 34)
 
-    // Message — big, white fill + player color outline + glow
+    // Message — big, white fill + dark outline (no shadow, keeps alpha clean)
     const lines = splitLines(text)
     const msgY  = lines.length === 1 ? 128 : 100
     ctx.font = 'bold 56px Impact, Arial Black, sans-serif'
-    ctx.lineWidth = 7
-    ctx.shadowColor = col
-    ctx.shadowBlur  = 18
+    ctx.lineWidth = 8
     lines.forEach((ln, i) => {
       const y = msgY + i * 62
-      ctx.strokeStyle = col
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)'
       ctx.strokeText(ln, TEX_W / 2, y)
       ctx.fillStyle = '#ffffff'
       ctx.fillText(ln, TEX_W / 2, y)
@@ -99,7 +97,7 @@ export class TraceManager {
 
     const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
     mat.diffuseTexture = tex
-    mat.useAlphaFromDiffuseTexture = true
+    mat.opacityTexture = tex     // luminance → opacity, same as working label code
     mat.disableLighting = true
     mat.backFaceCulling = false
     plane.material = mat
