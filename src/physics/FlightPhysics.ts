@@ -92,12 +92,18 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   state.velocity.z *= (1 - drag * dt)
   state.velocity.y *= (1 - drag * 0.3 * dt)
 
-  // --- Velocity carving: horizontal only — don't fight gravity/terrain on Y ---
+  // --- Velocity carving: horizontal ---
   const hSpeed2 = Math.sqrt(state.velocity.x ** 2 + state.velocity.z ** 2)
   if (hSpeed2 > 0.5) {
     const carveRate = state.isGliding ? 1.5 : 2.5
     state.velocity.x += (fwdX * hSpeed2 - state.velocity.x) * carveRate * dt
     state.velocity.z += (fwdZ * hSpeed2 - state.velocity.z) * carveRate * dt
+  }
+
+  // --- Pull-up carving: redirect speed upward when pitched up ---
+  // Lets bird recover from dives — faster dive = stronger pull-up force
+  if (fwdY > 0.1 && state.speed > 3) {
+    state.velocity.y += (fwdY * state.speed - state.velocity.y) * 3.0 * dt
   }
 
   // --- Speed cap ---
