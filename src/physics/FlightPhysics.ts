@@ -72,9 +72,12 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   if (input.flap && state.timeSinceLastFlap >= p.FLAP_COOLDOWN) {
     state.timeSinceLastFlap = 0
     const impulse = state.landed ? p.FLAP_IMPULSE * p.LAUNCH_BOOST : p.FLAP_IMPULSE
-    state.velocity.x += fwdX * 0.6 * impulse
-    state.velocity.y += (fwdY * 0.3 + 0.7) * impulse  // bias upward
-    state.velocity.z += fwdZ * 0.6 * impulse
+    // Upward bias fades when diving — flap pushes in facing direction
+    const diveBlend = Math.max(0, -fwdY)
+    const upBias = 0.7 * (1 - diveBlend)
+    state.velocity.x += fwdX * impulse
+    state.velocity.y += (fwdY + upBias) * impulse
+    state.velocity.z += fwdZ * impulse
     if (state.landed) state.landed = false
   }
 
@@ -96,14 +99,13 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   state.velocity.z *= (1 - drag * dt)
   state.velocity.y *= (1 - drag * 0.3 * dt)
 
-  // --- Velocity carving: blend horizontal velocity toward facing direction ---
-  const hSpeedPost = Math.sqrt(state.velocity.x ** 2 + state.velocity.z ** 2)
-  if (hSpeedPost > 0.5) {
-    const carveRate = state.isGliding ? 1.5 : 3.0
-    const targetVX = fwdX * hSpeedPost
-    const targetVZ = fwdZ * hSpeedPost
-    state.velocity.x += (targetVX - state.velocity.x) * carveRate * dt
-    state.velocity.z += (targetVZ - state.velocity.z) * carveRate * dt
+  // --- Velocity carving: blend full 3D velocity toward facing direction ---
+  const totalSpeed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2 + state.velocity.z ** 2)
+  if (totalSpeed > 0.5) {
+    const carveRate = state.isGliding ? 1.5 : 2.5
+    state.velocity.x += (fwdX * totalSpeed - state.velocity.x) * carveRate * dt
+    state.velocity.y += (fwdY * totalSpeed - state.velocity.y) * carveRate * dt
+    state.velocity.z += (fwdZ * totalSpeed - state.velocity.z) * carveRate * dt
   }
 
   // --- Speed cap ---
