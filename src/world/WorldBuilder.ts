@@ -28,7 +28,7 @@ export function terrainY(x: number, z: number): number {
   // Mountain — sharp peak in south zone
   const mx = x - MOUNTAIN_X, mz = z - MOUNTAIN_Z
   const mr = Math.sqrt(mx * mx + mz * mz)
-  const mountain = Math.max(0, (1 - mr / 32) ** 1.6) * 52
+  const mountain = Math.max(0, 1 - mr / 32) ** 1.6 * 52
 
   return Math.max(0, rimBowl + hills + mountain)
 }
