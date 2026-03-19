@@ -109,10 +109,10 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
     state.velocity.z += (fwdZ * hSpeed2 - state.velocity.z) * carveRate * dt
   }
 
-  // --- Pull-up carving: redirect speed upward when pitched up ---
-  // Lets bird recover from dives — faster dive = stronger pull-up force
-  if (fwdY > 0.1 && state.speed > 3) {
-    state.velocity.y += (fwdY * state.speed - state.velocity.y) * 3.0 * dt
+  // --- Pull-up carving: only when actually diving (vel.y significantly negative) ---
+  // Prevents jitter during normal flight; activates when nose up + genuinely falling
+  if (fwdY > 0.15 && state.velocity.y < -2) {
+    state.velocity.y += (fwdY * state.speed - state.velocity.y) * 2.0 * dt
   }
 
   // --- Speed cap ---

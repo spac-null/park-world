@@ -22,10 +22,10 @@ async function main() {
   engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio * 0.75, 1.5))
 
   const scene = new Scene(engine)
-  scene.clearColor = new Color4(0.27, 0.53, 0.87, 1)
+  scene.clearColor = new Color4(0.54, 0.74, 0.91, 1)  // matches sky horizon
   scene.fogMode = Scene.FOGMODE_EXP2
-  scene.fogDensity = 0.006
-  scene.fogColor = new Color3(0.27, 0.53, 0.87)
+  scene.fogDensity = 0.005
+  scene.fogColor = new Color3(0.54, 0.74, 0.91)
 
   // Lights
   const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.5), scene)
