@@ -94,7 +94,9 @@ async function main() {
 
     const inp = input.get()
     const camYaw = springCam.getCamYaw()
+    const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
+    if (!wasLanded && flight.landed) squashTimer = 0.25   // just touched down
     springCam.update(flight, dt)
 
     // FOV speed feedback: lerp between 65 (normal) and 75 (max speed)
@@ -119,10 +121,6 @@ async function main() {
     const bobAmp  = flight.landed ? 0 : Math.min(flight.speed / 14, 1) * 0.18
     const bob = Math.sin(now * 0.001 * bobFreq * Math.PI * 2) * bobAmp
 
-    // Landing squash — detect touchdown, play squash/stretch
-    const wasLanded = flight.landed
-    if (wasLanded && squashTimer <= 0) squashTimer = 0
-    if (!wasLanded && flight.landed) squashTimer = 0.25   // just landed
     squashTimer = Math.max(0, squashTimer - dt)
     const squashT = squashTimer / 0.25
     const squashY = 1 - squashT * 0.35        // compress Y

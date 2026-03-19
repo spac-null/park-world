@@ -17,7 +17,7 @@ export function createFlightState(x = 0, y = 20, z = 0): FlightState {
 
 export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number, _camYaw = 0): void {
   if (state.tumbling) {
-    tickTumble(state, dt)
+    tickTumble(state, dt, terrainY)
     return
   }
 
@@ -92,13 +92,12 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   state.velocity.z *= (1 - drag * dt)
   state.velocity.y *= (1 - drag * 0.3 * dt)
 
-  // --- Velocity carving: blend full 3D velocity toward facing direction ---
-  const totalSpeed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2 + state.velocity.z ** 2)
-  if (totalSpeed > 0.5) {
+  // --- Velocity carving: horizontal only — don't fight gravity/terrain on Y ---
+  const hSpeed2 = Math.sqrt(state.velocity.x ** 2 + state.velocity.z ** 2)
+  if (hSpeed2 > 0.5) {
     const carveRate = state.isGliding ? 1.5 : 2.5
-    state.velocity.x += (fwdX * totalSpeed - state.velocity.x) * carveRate * dt
-    state.velocity.y += (fwdY * totalSpeed - state.velocity.y) * carveRate * dt
-    state.velocity.z += (fwdZ * totalSpeed - state.velocity.z) * carveRate * dt
+    state.velocity.x += (fwdX * hSpeed2 - state.velocity.x) * carveRate * dt
+    state.velocity.z += (fwdZ * hSpeed2 - state.velocity.z) * carveRate * dt
   }
 
   // --- Speed cap ---
@@ -183,13 +182,11 @@ function triggerTumble(state: FlightState) {
   state.tumbleTimer = PHYSICS.TUMBLE_DURATION
 }
 
-function tickTumble(state: FlightState, dt: number) {
+function tickTumble(state: FlightState, dt: number, terrainY: (x: number, z: number) => number) {
   state.tumbleTimer -= dt
-  // Spin on all axes during tumble
   state.yaw   += 6 * dt
   state.pitch += 4 * dt
   state.bank  += 8 * dt
-  // Continue moving with reduced velocity
   state.velocity.x *= 0.92
   state.velocity.z *= 0.92
   state.velocity.y -= PHYSICS.GRAVITY * dt * 0.5
@@ -197,11 +194,20 @@ function tickTumble(state: FlightState, dt: number) {
   state.position.y += state.velocity.y * dt
   state.position.z += state.velocity.z * dt
 
+  // Keep above terrain during tumble — don't let bird sink through floor
+  const ground = terrainY(state.position.x, state.position.z) + 0.4
+  if (state.position.y < ground) {
+    state.position.y = ground
+    state.velocity.y = Math.abs(state.velocity.y) * 0.2
+    state.velocity.x *= 0.6
+    state.velocity.z *= 0.6
+  }
+
   if (state.tumbleTimer <= 0) {
     state.tumbling = false
     state.tumbleTimer = 0
     state.pitch = 0
-    state.bank = 0
+    state.bank  = 0
     state.velocity.x *= 0.3
     state.velocity.z *= 0.3
     state.velocity.y = 0
