@@ -128,6 +128,20 @@ async function main() {
   // NPC flock — 8 birds, can fly sideline, backward, orbit
   const npcFlock = new NpcFlock(scene, 8)
 
+  // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
+  const FOV_DEFAULT_RAD = CAMERA.DEFAULT_FOV * Math.PI / 180
+  const FOV_MAX_RAD     = 75 * Math.PI / 180
+
+  // Cache bird child meshes — avoid getChildMeshes() allocation every frame
+  const birdChildMeshes = birdRoot.getChildMeshes()
+  let   birdWasVisible  = true
+
+  // Pre-init rotation quaternion on bird root — RotationYawPitchRollToRef writes in-place
+  birdRoot.rotationQuaternion = new Quaternion()
+
+  // Reusable network move object — avoids alloc when below send interval
+  const _moveMsg = { x: 0, y: 0, z: 0, rotY: 0, name: 'player', role: 'bird' as const, speed: 0 }
+
   // Remote players
   const remotePlayers = new RemotePlayers(scene)
 
@@ -177,13 +191,10 @@ async function main() {
     }
     springCam.update(flight, dt)
 
-    // FOV speed feedback: lerp between 65 (normal) and 75 (max speed)
-    const { MAX_SPEED } = PHYSICS
-    const speedFrac = Math.min(flight.speed / MAX_SPEED, 1)
-    const targetFov = CAMERA.DEFAULT_FOV + (75 - CAMERA.DEFAULT_FOV) * speedFrac
-    const currentFovDeg = (springCam.getCamera() as any).fov * 180 / Math.PI
-    const newFovDeg = currentFovDeg + (targetFov - currentFovDeg) * Math.min(3 * dt, 1)
-    springCam.setFov(newFovDeg)
+    // FOV speed feedback — radians throughout, no deg↔rad conversions
+    const speedFrac   = Math.min(flight.speed / PHYSICS.MAX_SPEED, 1)
+    const targetFovRad = FOV_DEFAULT_RAD + (FOV_MAX_RAD - FOV_DEFAULT_RAD) * speedFrac
+    springCam.setFovRad(springCam.getFovRad() + (targetFovRad - springCam.getFovRad()) * Math.min(3 * dt, 1))
 
     // Wing flap animation
     if (wingL && wingR) {
@@ -206,9 +217,17 @@ async function main() {
     const squashY = 1 - squashT * 0.35        // compress Y
     const squashXZ = 1 + squashT * 0.2        // expand XZ
 
-    // N64 crash flicker — rapid visibility toggle while stunned (root is TransformNode, toggle children)
-    const flickerOn = !flight.tumbling || Math.floor(now / 70) % 2 === 0
-    for (const m of birdRoot.getChildMeshes()) m.isVisible = flickerOn
+    // N64 crash flicker — skip loop when not tumbling (common case)
+    if (flight.tumbling) {
+      const flickerOn = Math.floor(now / 70) % 2 === 0
+      if (flickerOn !== birdWasVisible) {
+        for (const m of birdChildMeshes) m.isVisible = flickerOn
+        birdWasVisible = flickerOn
+      }
+    } else if (!birdWasVisible) {
+      for (const m of birdChildMeshes) m.isVisible = true
+      birdWasVisible = true
+    }
 
     // Sync bird mesh
     birdRoot.position.set(
@@ -216,30 +235,22 @@ async function main() {
       flight.position.y + bob,
       flight.position.z,
     )
-    birdRoot.rotationQuaternion = Quaternion.RotationYawPitchRoll(
-      flight.yaw,
-      flight.pitch * 0.6,
-      -flight.bank * 0.5,
+    Quaternion.RotationYawPitchRollToRef(
+      flight.yaw, flight.pitch * 0.6, -flight.bank * 0.5,
+      birdRoot.rotationQuaternion!,
     )
     birdRoot.scaling.set(squashXZ, squashY, squashXZ)
 
-    // NPC flock
-    const pPos = new Vector3(flight.position.x, flight.position.y, flight.position.z)
-    npcFlock.tick(dt, pPos, flight.yaw)
+    // NPC flock — pass scalars, no Vector3 alloc
+    npcFlock.tick(dt, flight.position.x, flight.position.y, flight.position.z, flight.yaw, now)
 
     // Remote players
     remotePlayers.tick(dt)
 
-    // Network
-    net.sendMove({
-      x: flight.position.x,
-      y: flight.position.y,
-      z: flight.position.z,
-      rotY: flight.yaw,
-      name: 'player',
-      role: 'bird',
-      speed: flight.speed,
-    }, now)
+    // Network — reuse object, WebSocketClient throttles internally
+    _moveMsg.x = flight.position.x; _moveMsg.y = flight.position.y; _moveMsg.z = flight.position.z
+    _moveMsg.rotY = flight.yaw; _moveMsg.speed = flight.speed
+    net.sendMove(_moveMsg, now)
 
     scene.render()
   })

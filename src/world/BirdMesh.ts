@@ -1,5 +1,9 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, TransformNode } from '@babylonjs/core'
 
+// Shared materials for parts identical across all birds — saves 18 material objects
+let _beakMat: StandardMaterial | null = null
+let _eyeMat:  StandardMaterial | null = null
+
 export function createBirdMesh(scene: Scene, color: Color3, name = 'bird'): TransformNode {
   const root = new TransformNode(name, scene)
 
@@ -79,14 +83,19 @@ export function createBirdMesh(scene: Scene, color: Color3, name = 'bird'): Tran
   bodyMat.diffuseColor = color
   bodyMat.specularColor = new Color3(0.1, 0.1, 0.1)
 
-  const beakMat = new StandardMaterial(`${name}_beakMat`, scene)
-  beakMat.diffuseColor = new Color3(0.9, 0.65, 0.1)
-  beakMat.specularColor = new Color3(0, 0, 0)
-
-  const eyeMat = new StandardMaterial(`${name}_eyeMat`, scene)
-  eyeMat.diffuseColor = new Color3(0.05, 0.05, 0.05)
-  eyeMat.specularColor = new Color3(0.8, 0.8, 0.8)
-  eyeMat.specularPower = 64
+  if (!_beakMat) {
+    _beakMat = new StandardMaterial('shared_beakMat', scene)
+    _beakMat.diffuseColor = new Color3(0.9, 0.65, 0.1)
+    _beakMat.specularColor = new Color3(0, 0, 0)
+  }
+  if (!_eyeMat) {
+    _eyeMat = new StandardMaterial('shared_eyeMat', scene)
+    _eyeMat.diffuseColor = new Color3(0.05, 0.05, 0.05)
+    _eyeMat.specularColor = new Color3(0.8, 0.8, 0.8)
+    _eyeMat.specularPower = 64
+  }
+  const beakMat = _beakMat
+  const eyeMat  = _eyeMat
 
   const wingMat = new StandardMaterial(`${name}_wingMat`, scene)
   wingMat.diffuseColor = color.scale(0.75)

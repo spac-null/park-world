@@ -7,6 +7,7 @@ export class SpringCamera {
   private camYaw = 0
   private camHeight = 0
   private birdYaw = 0
+  private _lookTarget = new Vector3()  // reused every frame — no alloc
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.cam = new UniversalCamera('cam', new Vector3(0, 20, -15), scene)
@@ -25,8 +26,12 @@ export class SpringCamera {
     return this.camYaw
   }
 
-  setFov(deg: number) {
-    this.cam.fov = (deg * Math.PI) / 180
+  setFovRad(rad: number) {
+    this.cam.fov = rad
+  }
+
+  getFovRad(): number {
+    return this.cam.fov
   }
 
   update(flight: FlightState, dt: number) {
@@ -62,11 +67,12 @@ export class SpringCamera {
     const sinPitch = Math.sin(pitch)
     const sinBird  = Math.sin(yaw)
     const cosBird  = Math.cos(yaw)
-    this.cam.setTarget(new Vector3(
+    this._lookTarget.set(
       position.x + sinBird * cosPitch * C.LOOK_AHEAD,
       position.y - sinPitch * C.LOOK_AHEAD,
       position.z + cosBird * cosPitch * C.LOOK_AHEAD,
-    ))
+    )
+    this.cam.setTarget(this._lookTarget)
   }
 
   snapBehind(birdYaw: number) {

@@ -167,9 +167,10 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   }
 
   // --- Spire collision (cylinder at origin, radius 7, height 60) ---
-  const distToSpire = Math.sqrt(state.position.x ** 2 + state.position.z ** 2)
   const spireRadius = 7
-  if (distToSpire < spireRadius && state.position.y < 60) {
+  const distToSpireSq = state.position.x ** 2 + state.position.z ** 2
+  if (distToSpireSq < spireRadius * spireRadius && state.position.y < 60) {
+    const distToSpire = Math.sqrt(distToSpireSq)
     if (distToSpire > 0) {
       const nx = state.position.x / distToSpire
       const nz = state.position.z / distToSpire
@@ -185,8 +186,9 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
 
   // --- Rim wall boundary (soft push back inside radius 185) ---
   const rimLimit = 185
-  const distFromCenter = Math.sqrt(state.position.x ** 2 + state.position.z ** 2)
-  if (distFromCenter > rimLimit) {
+  const distFromCenterSq = state.position.x ** 2 + state.position.z ** 2
+  if (distFromCenterSq > rimLimit * rimLimit) {
+    const distFromCenter = Math.sqrt(distFromCenterSq)
     const nx = state.position.x / distFromCenter
     const nz = state.position.z / distFromCenter
     state.position.x = nx * rimLimit
