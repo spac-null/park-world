@@ -1,7 +1,9 @@
 import {
   Engine, Scene, Vector3, HemisphericLight, DirectionalLight,
   Color3, Color4, Quaternion, ParticleSystem, DynamicTexture,
+  ShadowGenerator,
 } from '@babylonjs/core'
+import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
 import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
 import { createFlightState, tickFlight } from './physics/FlightPhysics'
@@ -31,21 +33,57 @@ async function main() {
   const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.5), scene)
   sun.intensity = 1.2
   sun.diffuse = new Color3(1, 0.98, 0.90)
+  sun.position = new Vector3(100, 200, 100)  // needed for shadow frustum
   const amb = new HemisphericLight('amb', new Vector3(0, 1, 0), scene)
   amb.intensity = 0.7
   amb.diffuse = new Color3(0.55, 0.60, 0.65)
+
+  // Shadow map — soft exponential, 1024px
+  // N64 faked shadows with blob decals; we get real per-pixel shadows for free
+  const shadowGen = new ShadowGenerator(1024, sun)
+  shadowGen.useBlurExponentialShadowMap = true
+  shadowGen.blurKernel = 16
+  shadowGen.darkness = 0.35  // soft, not pitch black
 
   // World
   const world = new WorldBuilder(scene)
   world.build()
 
+  // Mark key structures as shadow casters, terrain as receiver
+  const casterNames = ['spire', 'rimN', 'rimE', 'rimS', 'rimW',
+    'pillar0', 'pillar1', 'pillar2', 'pillar3',
+    'arch0', 'arch1', 'arch2']
+  for (const name of casterNames) {
+    const m = scene.getMeshByName(name)
+    if (m) shadowGen.addShadowCaster(m)
+  }
+  const terrain = scene.getMeshByName('terrain')
+  if (terrain) terrain.receiveShadows = true
+
   // Player bird mesh — N64-style chunky bird, warm gold
   const birdRoot = createBirdMesh(scene, new Color3(0.9, 0.75, 0.2), 'bird')
+  for (const m of birdRoot.getChildMeshes()) shadowGen.addShadowCaster(m)
   const [wingL, wingR] = getWings(birdRoot)
 
   // Camera
   const springCam = new SpringCamera(scene, canvas)
   scene.activeCamera = springCam.getCamera()
+
+  // Post-processing — bloom + FXAA + warm color grade
+  // Hardware equivalent of this didn't exist until PS3/Xbox 360 era
+  const pipeline = new DefaultRenderingPipeline('pipeline', true, scene, [springCam.getCamera()])
+  pipeline.fxaaEnabled = true
+  pipeline.bloomEnabled = true
+  pipeline.bloomThreshold = 0.55
+  pipeline.bloomWeight = 0.25
+  pipeline.bloomKernel = 48
+  pipeline.bloomScale = 0.5
+  pipeline.imageProcessingEnabled = true
+  pipeline.imageProcessing.contrast = 1.08
+  pipeline.imageProcessing.exposure = 1.05
+  pipeline.imageProcessing.vignetteEnabled = true
+  pipeline.imageProcessing.vignetteWeight = 2.0
+  pipeline.imageProcessing.vignetteCameraFov = 0.6
 
   // Input
   const input = new InputManager()
