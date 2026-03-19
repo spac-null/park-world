@@ -15,7 +15,7 @@ export function createFlightState(x = 0, y = 20, z = 0): FlightState {
   }
 }
 
-export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number): void {
+export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number, camYaw = 0): void {
   if (state.tumbling) {
     tickTumble(state, dt)
     return
@@ -25,12 +25,19 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
 
   // --- Orientation ---
   if (!state.landed) {
-    const bankInput = input.bankLeft ? 1 : input.bankRight ? -1 : 0
-    const pitchInput = input.pitchUp ? -1 : input.pitchDown ? 1 : 0
+    const rawBankInput = input.bankLeft ? 1 : input.bankRight ? -1 : 0
+    const rawPitchInput = input.pitchUp ? -1 : input.pitchDown ? 1 : 0
 
     // Mobile joystick overrides when significant
-    const joyBank = Math.abs(input.joyX) > 0.3 ? input.joyX : bankInput
-    const joyPitch = Math.abs(input.joyY) > 0.3 ? -input.joyY : pitchInput
+    const rawJoyBank = Math.abs(input.joyX) > 0.3 ? input.joyX : rawBankInput
+    const rawJoyPitch = Math.abs(input.joyY) > 0.3 ? -input.joyY : rawPitchInput
+
+    // Camera-relative input: rotate joystick by offset between camYaw and bird yaw
+    const offset = camYaw - state.yaw
+    const cosO = Math.cos(offset)
+    const sinO = Math.sin(offset)
+    const joyBank  =  rawJoyBank  * cosO + rawJoyPitch * sinO
+    const joyPitch = -rawJoyBank  * sinO + rawJoyPitch * cosO
 
     state.bank  += joyBank  * p.BANK_RATE  * dt
     state.pitch += joyPitch * p.PITCH_RATE * dt
@@ -38,11 +45,11 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
     state.pitch = clamp(state.pitch, -p.MAX_PITCH, p.MAX_PITCH)
 
     // Bank decays toward 0 when no input
-    if (bankInput === 0 && Math.abs(input.joyX) < 0.1) {
+    if (rawBankInput === 0 && Math.abs(input.joyX) < 0.1) {
       state.bank *= (1 - 4 * dt)
     }
     // Pitch decays toward 0 slowly
-    if (pitchInput === 0 && Math.abs(input.joyY) < 0.1) {
+    if (rawPitchInput === 0 && Math.abs(input.joyY) < 0.1) {
       state.pitch *= (1 - 2 * dt)
     }
 
@@ -89,6 +96,16 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   state.velocity.z *= (1 - drag * dt)
   state.velocity.y *= (1 - drag * 0.3 * dt)
 
+  // --- Velocity carving: blend horizontal velocity toward facing direction ---
+  const hSpeedPost = Math.sqrt(state.velocity.x ** 2 + state.velocity.z ** 2)
+  if (hSpeedPost > 0.5) {
+    const carveRate = state.isGliding ? 1.5 : 3.0
+    const targetVX = fwdX * hSpeedPost
+    const targetVZ = fwdZ * hSpeedPost
+    state.velocity.x += (targetVX - state.velocity.x) * carveRate * dt
+    state.velocity.z += (targetVZ - state.velocity.z) * carveRate * dt
+  }
+
   // --- Speed cap ---
   state.speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2 + state.velocity.z ** 2)
   if (state.speed > p.MAX_SPEED) {
@@ -130,6 +147,38 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
       state.pitch = 0
       state.bank = 0
       state.speed = 0
+    }
+  }
+
+  // --- Spire collision (cylinder at origin, radius 7, height 60) ---
+  const distToSpire = Math.sqrt(state.position.x ** 2 + state.position.z ** 2)
+  const spireRadius = 7
+  if (distToSpire < spireRadius && state.position.y < 60) {
+    if (distToSpire > 0) {
+      const nx = state.position.x / distToSpire
+      const nz = state.position.z / distToSpire
+      state.position.x = nx * spireRadius
+      state.position.z = nz * spireRadius
+      const vDotN = state.velocity.x * nx + state.velocity.z * nz
+      if (vDotN < 0) {
+        state.velocity.x -= vDotN * nx * (1 + p.WALL_RESTITUTION)
+        state.velocity.z -= vDotN * nz * (1 + p.WALL_RESTITUTION)
+      }
+    }
+  }
+
+  // --- Rim wall boundary (soft push back inside radius 185) ---
+  const rimLimit = 185
+  const distFromCenter = Math.sqrt(state.position.x ** 2 + state.position.z ** 2)
+  if (distFromCenter > rimLimit) {
+    const nx = state.position.x / distFromCenter
+    const nz = state.position.z / distFromCenter
+    state.position.x = nx * rimLimit
+    state.position.z = nz * rimLimit
+    const vDotN = state.velocity.x * nx + state.velocity.z * nz
+    if (vDotN > 0) {
+      state.velocity.x -= vDotN * nx * (1 + p.WALL_RESTITUTION)
+      state.velocity.z -= vDotN * nz * (1 + p.WALL_RESTITUTION)
     }
   }
 }

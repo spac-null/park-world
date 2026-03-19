@@ -1,12 +1,15 @@
 import {
   Engine, Scene, Vector3, HemisphericLight, DirectionalLight,
-  Color3, Color4, MeshBuilder, StandardMaterial,
+  Color3, Color4,
 } from '@babylonjs/core'
 import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
 import { createFlightState, tickFlight } from './physics/FlightPhysics'
 import { WorldBuilder, terrainY } from './world/WorldBuilder'
+import { createBirdMesh, getWings } from './world/BirdMesh'
+import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
+import { CAMERA } from './config'
 
 async function main() {
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
@@ -36,21 +39,9 @@ async function main() {
   const world = new WorldBuilder(scene)
   world.build()
 
-  // Player bird mesh (box placeholder — proper mesh comes later)
-  const birdBody = MeshBuilder.CreateBox('birdBody', { width: 1.2, height: 0.6, depth: 1.8 }, scene)
-  const wingL = MeshBuilder.CreateBox('wingL', { width: 2.0, height: 0.15, depth: 0.8 }, scene)
-  const wingR = MeshBuilder.CreateBox('wingR', { width: 2.0, height: 0.15, depth: 0.8 }, scene)
-  wingL.position.x = -1.6
-  wingR.position.x =  1.6
-  wingL.parent = birdBody
-  wingR.parent = birdBody
-
-  const birdMat = new StandardMaterial('birdMat', scene)
-  birdMat.diffuseColor = new Color3(0.9, 0.75, 0.2)
-  birdMat.specularColor = new Color3(0.1, 0.1, 0.1)
-  birdBody.material = birdMat
-  wingL.material = birdMat
-  wingR.material = birdMat
+  // Player bird mesh — N64-style chunky bird, warm gold
+  const birdRoot = createBirdMesh(scene, new Color3(0.9, 0.75, 0.2), 'bird')
+  const [wingL, wingR] = getWings(birdRoot)
 
   // Camera
   const springCam = new SpringCamera(scene, canvas)
@@ -62,8 +53,33 @@ async function main() {
   // Flight state — spawn above center
   const flight = createFlightState(0, 30, -20)
 
+  // Remote players
+  const remotePlayers = new RemotePlayers(scene)
+
   // Network
   const net = new WebSocketClient()
+
+  net.on('welcome', (msg: any) => {
+    if (msg.players) {
+      for (const p of msg.players) {
+        remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')
+        remotePlayers.update(p.id, p.x ?? 0, p.y ?? 20, p.z ?? 0, p.rotY ?? 0)
+      }
+    }
+  })
+
+  net.on('join', (msg: any) => {
+    remotePlayers.add(msg.id, msg.name || 'bird', msg.color || '#aaaaaa')
+  })
+
+  net.on('update', (msg: any) => {
+    remotePlayers.update(msg.id, msg.x, msg.y, msg.z, msg.rotY)
+  })
+
+  net.on('leave', (msg: any) => {
+    remotePlayers.remove(msg.id)
+  })
+
   net.connect()
 
   // Game loop
@@ -74,21 +90,35 @@ async function main() {
     last = now
 
     const inp = input.get()
-    tickFlight(flight, inp, dt, terrainY)
+    const camYaw = springCam.getCamYaw()
+    tickFlight(flight, inp, dt, terrainY, camYaw)
     springCam.update(flight, dt)
 
+    // FOV speed feedback: lerp between 65 (normal) and 75 (max speed)
+    const { MAX_SPEED } = { MAX_SPEED: 28 }
+    const speedFrac = Math.min(flight.speed / MAX_SPEED, 1)
+    const targetFov = CAMERA.DEFAULT_FOV + (75 - CAMERA.DEFAULT_FOV) * speedFrac
+    const currentFovDeg = (springCam.getCamera() as any).fov * 180 / Math.PI
+    const newFovDeg = currentFovDeg + (targetFov - currentFovDeg) * Math.min(3 * dt, 1)
+    springCam.setFov(newFovDeg)
+
     // Wing flap animation
-    const flapAnim = flight.timeSinceLastFlap < 0.15
-      ? Math.sin(now * 0.05) * 0.5
-      : 0
-    wingL.rotation.z =  0.2 + flapAnim
-    wingR.rotation.z = -0.2 - flapAnim
+    if (wingL && wingR) {
+      const flapAnim = flight.timeSinceLastFlap < 0.15
+        ? Math.sin(now * 0.05) * 0.5
+        : 0
+      wingL.rotation.z =  0.18 + flapAnim
+      wingR.rotation.z = -0.18 - flapAnim
+    }
 
     // Sync bird mesh
-    birdBody.position.set(flight.position.x, flight.position.y, flight.position.z)
-    birdBody.rotation.y = flight.yaw
-    birdBody.rotation.x = flight.pitch * 0.6
-    birdBody.rotation.z = -flight.bank * 0.5
+    birdRoot.position.set(flight.position.x, flight.position.y, flight.position.z)
+    birdRoot.rotation.y = flight.yaw
+    birdRoot.rotation.x = flight.pitch * 0.6
+    birdRoot.rotation.z = -flight.bank * 0.5
+
+    // Remote players
+    remotePlayers.tick(dt)
 
     // Network
     net.sendMove({
