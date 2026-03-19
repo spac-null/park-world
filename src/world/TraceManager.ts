@@ -1,4 +1,4 @@
-import { Scene, MeshBuilder, StandardMaterial, DynamicTexture, Mesh, Color3 } from '@babylonjs/core'
+import { Scene, MeshBuilder, StandardMaterial, DynamicTexture, Mesh } from '@babylonjs/core'
 
 const LIFETIME      = 90    // seconds alive
 const FADE_START    = 80    // begin fade at 80s
@@ -33,7 +33,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, font: string, max
   return lines.slice(0, 2)
 }
 
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
   ctx.arcTo(x + w, y,     x + w, y + h, r)
@@ -45,12 +45,13 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 
 export class TraceManager {
   private traces: Trace[] = []
+  private scene: Scene
 
-  constructor(private scene: Scene) {}
+  constructor(scene: Scene) { this.scene = scene }
 
   drop(x: number, y: number, z: number, text: string, color: string, name: string) {
     const tex = new DynamicTexture(`trTex${Date.now()}`, { width: TEX_W, height: TEX_H }, this.scene, false)
-    const ctx = tex.getContext()
+    const ctx = tex.getContext() as unknown as CanvasRenderingContext2D
 
     // Background — player color, rounded rect
     const r = parseInt(color.slice(1, 3), 16) || 100

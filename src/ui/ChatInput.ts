@@ -2,8 +2,10 @@ export class ChatInput {
   private bar: HTMLElement
   private input: HTMLInputElement
   private _active = false
+  private onSubmit: (text: string) => void
 
-  constructor(private onSubmit: (text: string) => void) {
+  constructor(onSubmit: (text: string) => void) {
+    this.onSubmit = onSubmit
     this.bar   = document.getElementById('chat-bar')!
     this.input = document.getElementById('chat-input') as HTMLInputElement
 
