@@ -8,8 +8,8 @@ const FLOAT_DUR     = 1.4
 
 const TEX_W = 512
 const TEX_H = 200
-const PLANE_W = 10
-const PLANE_H = PLANE_W * TEX_H / TEX_W   // ≈3.9
+const PLANE_W = 12
+const PLANE_H = PLANE_W * TEX_H / TEX_W   // ≈4.7
 
 interface Trace {
   mesh: Mesh
@@ -25,7 +25,7 @@ function splitLines(text: string): string[] {
   let line = ''
   for (const w of words) {
     const test = line ? `${line} ${w}` : w
-    if (line && test.length > 20) { lines.push(line); line = w }
+    if (line && test.length > 18) { lines.push(line); line = w }
     else line = test
   }
   if (line) lines.push(line)
@@ -39,39 +39,54 @@ export class TraceManager {
   constructor(scene: Scene) { this.scene = scene }
 
   drop(x: number, y: number, z: number, text: string, color: string, name: string) {
-    // Draw on a real HTML canvas — bypasses ICanvasRenderingContext proxy entirely
     const canvas = document.createElement('canvas')
     canvas.width  = TEX_W
     canvas.height = TEX_H
     const ctx = canvas.getContext('2d')!
 
-    const r = parseInt(color.slice(1, 3), 16) || 100
-    const g = parseInt(color.slice(3, 5), 16) || 160
-    const b = parseInt(color.slice(5, 7), 16) || 255
+    const r = Math.min(255, (parseInt(color.slice(1, 3), 16) || 100) + 60)
+    const g = Math.min(255, (parseInt(color.slice(3, 5), 16) || 160) + 60)
+    const b = Math.min(255, (parseInt(color.slice(5, 7), 16) || 255) + 60)
+    const col = `rgb(${r},${g},${b})`
 
-    ctx.fillStyle = `rgb(${r},${g},${b})`
-    ctx.fillRect(0, 0, TEX_W, TEX_H)
+    // Transparent background — no box
+    ctx.clearRect(0, 0, TEX_W, TEX_H)
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-    ctx.lineWidth = 4
-    ctx.strokeRect(3, 3, TEX_W - 6, TEX_H - 6)
+    // Slight random tilt — hand-sprayed feel
+    const tilt = (Math.random() - 0.5) * 0.22
+    ctx.save()
+    ctx.translate(TEX_W / 2, TEX_H / 2)
+    ctx.rotate(tilt)
+    ctx.translate(-TEX_W / 2, -TEX_H / 2)
 
-    ctx.fillStyle = 'rgba(255,255,255,0.75)'
-    ctx.font = 'bold 22px sans-serif'
+    // Name — small, player color, dark outline
+    ctx.font = 'bold 20px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(name.slice(0, 24), TEX_W / 2, 40)
+    ctx.lineWidth = 4
+    ctx.strokeStyle = 'rgba(0,0,0,0.9)'
+    ctx.strokeText(name.slice(0, 26), TEX_W / 2, 34)
+    ctx.fillStyle = col
+    ctx.fillText(name.slice(0, 26), TEX_W / 2, 34)
 
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'
-    ctx.fillRect(24, 52, TEX_W - 48, 1)
-
+    // Message — big, white fill + player color outline + glow
     const lines = splitLines(text)
-    ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 40px sans-serif'
-    const msgY = lines.length === 1 ? 130 : 104
-    lines.forEach((ln, i) => ctx.fillText(ln, TEX_W / 2, msgY + i * 52))
+    const msgY  = lines.length === 1 ? 128 : 100
+    ctx.font = 'bold 56px Impact, Arial Black, sans-serif'
+    ctx.lineWidth = 7
+    ctx.shadowColor = col
+    ctx.shadowBlur  = 18
+    lines.forEach((ln, i) => {
+      const y = msgY + i * 62
+      ctx.strokeStyle = col
+      ctx.strokeText(ln, TEX_W / 2, y)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(ln, TEX_W / 2, y)
+    })
 
-    // Pass drawn canvas to DynamicTexture — uploads existing pixel data
+    ctx.restore()
+
     const tex = new DynamicTexture(`trTex${Date.now()}`, canvas, this.scene, false)
+    tex.hasAlpha = true
     tex.update()
 
     const plane = MeshBuilder.CreatePlane(`trace${Date.now()}`, {
@@ -84,6 +99,7 @@ export class TraceManager {
 
     const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
     mat.diffuseTexture = tex
+    mat.useAlphaFromDiffuseTexture = true
     mat.disableLighting = true
     mat.backFaceCulling = false
     plane.material = mat
