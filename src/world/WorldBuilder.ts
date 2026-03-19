@@ -96,6 +96,7 @@ export class WorldBuilder {
       positions[i + 1] = terrainY(x, z)
     }
     terrain.updateVerticesData('position', positions)
+    terrain.refreshBoundingInfo()  // stale bbox causes frustum culling to drop terrain
     terrain.createNormals(false)
 
     // Vertex colors — blend grass / dry-grass / rock by slope and height
