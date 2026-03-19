@@ -100,6 +100,12 @@ async function main() {
   let squashTimer = 0
   let bobPhase = 0
 
+  // Body inertia roll — underdamped spring, overshoots opposite direction on bank
+  let visualRoll = 0
+  let rollVel    = 0
+  const ROLL_SPRING  = 18   // stiffness
+  const ROLL_DAMPING = 5    // < 2*sqrt(18)≈8.5 → underdamped → overshoot
+
   // Landing dust particles
   const dustTex = new DynamicTexture('dustTex', { width: 16, height: 16 }, scene, false)
   const dtx = dustTex.getContext()
@@ -270,8 +276,14 @@ async function main() {
       flight.position.y + bob,
       flight.position.z,
     )
+    // Body inertia spring — overshoots opposite bank direction on input change
+    const targetRoll = -flight.bank * 0.5
+    const rollForce  = (targetRoll - visualRoll) * ROLL_SPRING - rollVel * ROLL_DAMPING
+    rollVel    += rollForce * dt
+    visualRoll += rollVel * dt
+
     Quaternion.RotationYawPitchRollToRef(
-      flight.yaw, flight.pitch * 0.6, -flight.bank * 0.5,
+      flight.yaw, flight.pitch * 0.6, visualRoll,
       birdRoot.rotationQuaternion!,
     )
     birdRoot.scaling.set(squashXZ, squashY, squashXZ)
