@@ -11,6 +11,7 @@ export class InputManager {
 
   private keys = new Set<string>()
   private isMobile: boolean
+  private locked = false
 
   constructor() {
     this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
@@ -18,8 +19,12 @@ export class InputManager {
     if (this.isMobile) this.bindJoystick()
   }
 
+  lock()   { this.locked = true;  this.keys.clear() }
+  unlock() { this.locked = false; this.keys.clear() }
+
   private bindKeyboard() {
     window.addEventListener('keydown', e => {
+      if (this.locked) return
       this.keys.add(e.code)
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
         e.preventDefault()

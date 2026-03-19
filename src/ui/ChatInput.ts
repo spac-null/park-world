@@ -1,10 +1,14 @@
+import type { InputManager } from '../engine/InputManager'
+
 export class ChatInput {
   private bar: HTMLElement
   private input: HTMLInputElement
   private _active = false
   private onSubmit: (text: string) => void
+  private inputMgr: InputManager
 
-  constructor(onSubmit: (text: string) => void) {
+  constructor(inputMgr: InputManager, onSubmit: (text: string) => void) {
+    this.inputMgr = inputMgr
     this.onSubmit = onSubmit
     this.bar   = document.getElementById('chat-bar')!
     this.input = document.getElementById('chat-input') as HTMLInputElement
@@ -24,6 +28,7 @@ export class ChatInput {
   open() {
     if (this._active) return
     this._active = true
+    this.inputMgr.lock()
     this.input.value = ''
     this.bar.style.display = 'flex'
     setTimeout(() => this.input.focus(), 0)
@@ -31,6 +36,7 @@ export class ChatInput {
 
   close() {
     this._active = false
+    this.inputMgr.unlock()
     this.bar.style.display = 'none'
     this.input.blur()
   }

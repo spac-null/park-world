@@ -33,15 +33,6 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, font: string, max
   return lines.slice(0, 2)
 }
 
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y,     x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x,     y + h, r)
-  ctx.arcTo(x,     y + h, x,     y,     r)
-  ctx.arcTo(x,     y,     x + w, y,     r)
-  ctx.closePath()
-}
 
 export class TraceManager {
   private traces: Trace[] = []
@@ -58,15 +49,14 @@ export class TraceManager {
     const g = parseInt(color.slice(3, 5), 16) || 160
     const b = parseInt(color.slice(5, 7), 16) || 255
 
-    ctx.clearRect(0, 0, TEX_W, TEX_H)
-    ctx.fillStyle = `rgba(${r},${g},${b},0.90)`
-    roundedRect(ctx, 5, 5, TEX_W - 10, TEX_H - 10, 24)
-    ctx.fill()
+    // Solid background — no alpha transparency needed
+    ctx.fillStyle = `rgb(${r},${g},${b})`
+    ctx.fillRect(0, 0, TEX_W, TEX_H)
 
-    // Bright edge highlight
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'
-    ctx.lineWidth = 3
-    ctx.stroke()
+    // White border
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+    ctx.lineWidth = 4
+    ctx.strokeRect(3, 3, TEX_W - 6, TEX_H - 6)
 
     // Name — small, dimmed
     ctx.fillStyle = 'rgba(255,255,255,0.72)'
@@ -87,7 +77,6 @@ export class TraceManager {
     lines.forEach((ln, i) => ctx.fillText(ln, TEX_W / 2, startY + i * 52, TEX_W - 44))
 
     tex.update()
-    tex.hasAlpha = true
 
     const plane = MeshBuilder.CreatePlane(`trace${Date.now()}`, {
       width: PLANE_W, height: PLANE_H,
@@ -99,7 +88,6 @@ export class TraceManager {
 
     const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
     mat.diffuseTexture = tex
-    mat.useAlphaFromDiffuseTexture = true
     mat.disableLighting = true
     mat.backFaceCulling = false
     plane.material = mat
