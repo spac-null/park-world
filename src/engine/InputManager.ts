@@ -14,7 +14,7 @@ export class InputManager {
   private locked = false
 
   constructor() {
-    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    this.isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth < 1024
     this.bindKeyboard()
     if (this.isMobile) this.bindJoystick()
   }
