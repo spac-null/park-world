@@ -110,7 +110,7 @@ async function main() {
     // Wing flap animation
     if (wingL && wingR) {
       const flapAnim = flight.timeSinceLastFlap < 0.15
-        ? Math.sin(now * 0.05) * 0.5
+        ? Math.sin((flight.timeSinceLastFlap / 0.15) * Math.PI) * 0.5
         : 0
       wingL.rotation.z =  0.18 + flapAnim
       wingR.rotation.z = -0.18 - flapAnim
@@ -125,6 +125,9 @@ async function main() {
     const squashT = squashTimer / 0.25
     const squashY = 1 - squashT * 0.35        // compress Y
     const squashXZ = 1 + squashT * 0.2        // expand XZ
+
+    // N64 crash flicker — rapid visibility toggle while stunned
+    birdRoot.isVisible = !flight.tumbling || Math.floor(now / 70) % 2 === 0
 
     // Sync bird mesh
     birdRoot.position.set(

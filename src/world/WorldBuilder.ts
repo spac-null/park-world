@@ -49,7 +49,7 @@ export class WorldBuilder {
     const terrain = MeshBuilder.CreateGround('terrain', {
       width: size, height: size,
       subdivisions,
-      updatable: false,
+      updatable: true,
     }, this.scene)
 
     // Apply height function to vertices
@@ -77,7 +77,7 @@ export class WorldBuilder {
       diameterBottom: 14,
       tessellation: 7,
     }, this.scene)
-    spire.position.y = WORLD.SPIRE_HEIGHT / 2
+    spire.position.y = terrainY(0, 0) + WORLD.SPIRE_HEIGHT / 2
 
     const mat = new StandardMaterial('spireMat', this.scene)
     mat.diffuseColor = new Color3(0.55, 0.50, 0.44)
@@ -142,7 +142,7 @@ export class WorldBuilder {
         thickness: 2,
         tessellation: 12,
       }, this.scene)
-      arch.position.set(pos.x, 9, pos.z)
+      arch.position.set(pos.x, terrainY(pos.x, pos.z) + 9, pos.z)
       arch.rotation.z = Math.PI / 2
       const mat = new StandardMaterial(`archMat${i}`, this.scene)
       mat.diffuseColor = new Color3(0.68, 0.60, 0.45)
@@ -165,7 +165,7 @@ export class WorldBuilder {
         diameterBottom: 8,
         tessellation: 6,
       }, this.scene)
-      pillar.position.set(p.x, p.h / 2, p.z)
+      pillar.position.set(p.x, terrainY(p.x, p.z) + p.h / 2, p.z)
       const mat = new StandardMaterial(`pillarMat${i}`, this.scene)
       mat.diffuseColor = new Color3(0.50, 0.55, 0.42)
       mat.specularColor = new Color3(0, 0, 0)

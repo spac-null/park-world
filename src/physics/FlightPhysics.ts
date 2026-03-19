@@ -180,37 +180,26 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
 function triggerTumble(state: FlightState) {
   state.tumbling = true
   state.tumbleTimer = PHYSICS.TUMBLE_DURATION
+  // Freeze on crash — N64 stun
+  state.velocity.x = 0
+  state.velocity.y = 0
+  state.velocity.z = 0
+  state.pitch = 0
+  state.bank  = 0
 }
 
 function tickTumble(state: FlightState, dt: number, terrainY: (x: number, z: number) => number) {
   state.tumbleTimer -= dt
-  state.yaw   += 6 * dt
-  state.pitch += 4 * dt
-  state.bank  += 8 * dt
-  state.velocity.x *= 0.92
-  state.velocity.z *= 0.92
-  state.velocity.y -= PHYSICS.GRAVITY * dt * 0.5
-  state.position.x += state.velocity.x * dt
-  state.position.y += state.velocity.y * dt
-  state.position.z += state.velocity.z * dt
 
-  // Keep above terrain during tumble — don't let bird sink through floor
+  // Keep above terrain while stunned
   const ground = terrainY(state.position.x, state.position.z) + 0.4
-  if (state.position.y < ground) {
-    state.position.y = ground
-    state.velocity.y = Math.abs(state.velocity.y) * 0.2
-    state.velocity.x *= 0.6
-    state.velocity.z *= 0.6
-  }
+  if (state.position.y < ground) state.position.y = ground
 
   if (state.tumbleTimer <= 0) {
     state.tumbling = false
     state.tumbleTimer = 0
-    state.pitch = 0
-    state.bank  = 0
-    state.velocity.x *= 0.3
-    state.velocity.z *= 0.3
-    state.velocity.y = 0
+    // Pop slightly above terrain on recovery so bird can take off
+    state.position.y = terrainY(state.position.x, state.position.z) + 3
   }
 }
 
