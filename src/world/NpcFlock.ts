@@ -164,8 +164,8 @@ export class NpcFlock {
 
     // Smooth yaw rotation (avoid snapping through ±π)
     let dyaw = targetYaw - b.facingYaw
-    if (dyaw > Math.PI)  dyaw -= Math.PI * 2
-    if (dyaw < -Math.PI) dyaw += Math.PI * 2
+    if (dyaw >= Math.PI)  dyaw -= Math.PI * 2
+    if (dyaw <= -Math.PI) dyaw += Math.PI * 2
     b.facingYaw += dyaw * Math.min(4 * dt, 1)
 
     // Pitch from vertical velocity

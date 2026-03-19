@@ -9,6 +9,10 @@ function seededRand(seed: number) {
   return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646 }
 }
 
+// Mountain center — south zone, flyable cave through it
+export const MOUNTAIN_X = 0
+export const MOUNTAIN_Z = -88
+
 // Terrain height function — authored shape, not pure noise
 export function terrainY(x: number, z: number): number {
   // Caldera bowl: rises toward edges
@@ -21,8 +25,12 @@ export function terrainY(x: number, z: number): number {
     Math.cos(z * 0.035) * 2.5 +
     Math.sin(x * 0.09 + z * 0.07) * 1.5
 
-  // Hard floor
-  return Math.max(0, rimBowl + hills)
+  // Mountain — sharp peak in south zone
+  const mx = x - MOUNTAIN_X, mz = z - MOUNTAIN_Z
+  const mr = Math.sqrt(mx * mx + mz * mz)
+  const mountain = Math.max(0, (1 - mr / 32) ** 1.6) * 52
+
+  return Math.max(0, rimBowl + hills + mountain)
 }
 
 export class WorldBuilder {
@@ -41,6 +49,7 @@ export class WorldBuilder {
     this.buildCanopy()
     this.buildScrapYard()
     this.buildVegetation()
+    this.buildMountain()
   }
 
   private buildSky() {
@@ -52,7 +61,7 @@ export class WorldBuilder {
     sky.isPickable = false
 
     // Gradient texture: deep blue top → hazy light blue horizon
-    const skyTex = new DynamicTexture('skyGrad', { width: 2, height: 512 }, this.scene, false)
+    const skyTex = new DynamicTexture('skyGrad', { width: 16, height: 512 }, this.scene, false)
     const ctx = skyTex.getContext()
     const grad = ctx.createLinearGradient(0, 0, 0, 512)
     grad.addColorStop(0,   '#1a4fc8')
@@ -358,5 +367,95 @@ export class WorldBuilder {
       box.material = mat
       box.checkCollisions = true
     })
+  }
+
+  private buildMountain() {
+    const mx = MOUNTAIN_X
+    const mz = MOUNTAIN_Z
+    const peakY = terrainY(mx, mz)   // top of mountain (~52 + base)
+    const caveY = terrainY(mx, mz - 14) + 7   // cave mouth height on south face
+
+    const stoneMat = new StandardMaterial('mountainStoneMat', this.scene)
+    stoneMat.diffuseColor = new Color3(0.50, 0.45, 0.38)
+    stoneMat.specularColor = new Color3(0.05, 0.05, 0.05)
+
+    const darkMat = new StandardMaterial('caveMat', this.scene)
+    darkMat.diffuseColor = new Color3(0.12, 0.10, 0.09)
+    darkMat.specularColor = new Color3(0, 0, 0)
+
+    // --- Cave entrance arch (south face) ---
+    const archS = MeshBuilder.CreateTorus('caveArchS', {
+      diameter: 14, thickness: 2.5, tessellation: 14,
+    }, this.scene)
+    archS.position.set(mx, caveY, mz - 14)
+    archS.rotation.z = Math.PI / 2
+    archS.material = stoneMat
+
+    // --- Cave exit arch (north face, hidden behind waterfall) ---
+    const archN = MeshBuilder.CreateTorus('caveArchN', {
+      diameter: 14, thickness: 2.5, tessellation: 14,
+    }, this.scene)
+    archN.position.set(mx, caveY, mz + 12)
+    archN.rotation.z = Math.PI / 2
+    archN.material = stoneMat
+
+    // --- Cave tunnel interior (dark box through mountain) ---
+    const tunnel = MeshBuilder.CreateBox('caveTunnel', {
+      width: 10, height: 9, depth: 30,
+    }, this.scene)
+    tunnel.position.set(mx, caveY, mz - 1)
+    tunnel.material = darkMat
+
+    // --- Rocky ledge overhangs flanking the peak ---
+    const ledges: [number, number][] = [[-14, -6], [14, -6], [-10, 8], [10, 8]]
+    ledges.forEach(([ox, oz], i) => {
+      const ledge = MeshBuilder.CreateBox(`ledge${i}`, {
+        width: 10 + i * 2, height: 3, depth: 8,
+      }, this.scene)
+      ledge.position.set(mx + ox, terrainY(mx + ox, mz + oz) + 1.5, mz + oz)
+      ledge.rotation.z = (ox > 0 ? 1 : -1) * 0.18
+      ledge.material = stoneMat
+    })
+
+    // --- Waterfall — north face of mountain, hides cave exit ---
+    const fallX = mx, fallZ = mz + 10
+    const fallY = peakY - 8
+
+    // Layered water slabs cascading down, blue-tinted + semi-transparent
+    const waterMat = new StandardMaterial('waterMat', this.scene)
+    waterMat.diffuseColor = new Color3(0.35, 0.60, 0.90)
+    waterMat.specularColor = new Color3(0.8, 0.9, 1.0)
+    waterMat.specularPower = 32
+    waterMat.alpha = 0.72
+
+    const steps = 7
+    for (let s = 0; s < steps; s++) {
+      const t  = s / (steps - 1)
+      const sy = fallY - t * (fallY - caveY - 2)
+      const sw = 6 + t * 3     // widens as it falls
+      const sd = 0.8 - t * 0.3
+      const slab = MeshBuilder.CreateBox(`wfall${s}`, {
+        width: sw, height: 0.4, depth: sd,
+      }, this.scene)
+      slab.position.set(fallX, sy, fallZ + t * 1.5)
+      slab.rotation.x = -0.15
+      slab.material = waterMat
+    }
+
+    // Mist spray at base — small flat disc
+    const mist = MeshBuilder.CreateDisc('mistDisc', { radius: 6, tessellation: 12 }, this.scene)
+    mist.position.set(fallX, caveY - 1, fallZ + 2)
+    mist.rotation.x = Math.PI / 2
+    const mistMat = new StandardMaterial('mistMat', this.scene)
+    mistMat.diffuseColor = new Color3(0.7, 0.85, 1.0)
+    mistMat.alpha = 0.35
+    mist.material = mistMat
+
+    // --- Summit cap — flat rocky top ---
+    const summit = MeshBuilder.CreateCylinder('mountainSummit', {
+      height: 4, diameterTop: 6, diameterBottom: 10, tessellation: 7,
+    }, this.scene)
+    summit.position.set(mx, peakY + 2, mz)
+    summit.material = stoneMat
   }
 }

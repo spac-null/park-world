@@ -47,6 +47,13 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
       state.pitch *= (1 - 2 * dt)
     }
 
+    // Glide pitch correction — body tracks velocity direction when not flapping
+    // Prevents nose-up while actually falling (Banjo always reads true to trajectory)
+    if (state.isGliding && state.speed > 2) {
+      const velPitch = Math.asin(Math.max(-1, Math.min(1, -state.velocity.y / state.speed)))
+      state.pitch += (velPitch - state.pitch) * 1.5 * dt
+    }
+
     // Yaw from bank
     state.yaw -= state.bank * p.BANK_TO_YAW * p.TURN_RATE * dt
   }
