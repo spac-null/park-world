@@ -39,6 +39,7 @@ export interface FlightState {
   tumbleTimer: number
   timeSinceLastFlap: number
   isGliding: boolean
+  coyoteTimer: number
 }
 
 export interface InputState {

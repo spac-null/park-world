@@ -22,6 +22,7 @@ export const PHYSICS = {
   BOUNCE_RESTITUTION: 0.3,
   WALL_RESTITUTION: 0.4,
   TUMBLE_DURATION: 0.8,
+  COYOTE_TIME: 0.12,
 }
 
 export const CAMERA = {

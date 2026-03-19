@@ -12,6 +12,7 @@ export function createFlightState(x = 0, y = 20, z = 0): FlightState {
     tumbleTimer: 0,
     timeSinceLastFlap: 999,
     isGliding: false,
+    coyoteTimer: 0,
   }
 }
 
@@ -60,11 +61,19 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   const fwdY = -sinPitch
   const fwdZ = cosYaw * cosPitch
 
+  // --- Coyote time: window after leaving ground where flap still gets launch boost ---
+  if (state.landed) {
+    state.coyoteTimer = p.COYOTE_TIME
+  } else {
+    state.coyoteTimer = Math.max(0, state.coyoteTimer - dt)
+  }
+
   // --- Flap ---
   state.timeSinceLastFlap += dt
   if (input.flap && state.timeSinceLastFlap >= p.FLAP_COOLDOWN) {
     state.timeSinceLastFlap = 0
-    const impulse = state.landed ? p.FLAP_IMPULSE * p.LAUNCH_BOOST : p.FLAP_IMPULSE
+    const hasGroundBoost = state.landed || state.coyoteTimer > 0
+    const impulse = hasGroundBoost ? p.FLAP_IMPULSE * p.LAUNCH_BOOST : p.FLAP_IMPULSE
     // Upward bias fades when diving — flap pushes in facing direction
     const diveBlend = Math.max(0, -fwdY)
     const upBias = 0.7 * (1 - diveBlend)

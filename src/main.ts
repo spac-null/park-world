@@ -1,6 +1,6 @@
 import {
   Engine, Scene, Vector3, HemisphericLight, DirectionalLight,
-  Color3, Color4, Quaternion,
+  Color3, Color4, Quaternion, ParticleSystem, DynamicTexture,
 } from '@babylonjs/core'
 import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
@@ -57,6 +57,35 @@ async function main() {
   let squashTimer = 0
   let bobPhase = 0
 
+  // Landing dust particles
+  const dustTex = new DynamicTexture('dustTex', { width: 16, height: 16 }, scene, false)
+  const dtx = dustTex.getContext()
+  const grd = dtx.createRadialGradient(8, 8, 0, 8, 8, 8)
+  grd.addColorStop(0, 'rgba(255,255,255,1)')
+  grd.addColorStop(1, 'rgba(255,255,255,0)')
+  dtx.fillStyle = grd
+  dtx.fillRect(0, 0, 16, 16)
+  dustTex.update()
+
+  const dustSystem = new ParticleSystem('dust', 40, scene)
+  dustSystem.particleTexture = dustTex
+  dustSystem.emitter = new Vector3(0, 0, 0)
+  dustSystem.minSize = 0.2
+  dustSystem.maxSize = 0.7
+  dustSystem.minLifeTime = 0.25
+  dustSystem.maxLifeTime = 0.5
+  dustSystem.emitRate = 800
+  dustSystem.targetStopDuration = 0.05
+  dustSystem.disposeOnStop = false
+  dustSystem.minEmitPower = 2
+  dustSystem.maxEmitPower = 5
+  dustSystem.direction1 = new Vector3(-1, 0.5, -1)
+  dustSystem.direction2 = new Vector3(1, 1.5, 1)
+  dustSystem.color1 = new Color4(0.85, 0.70, 0.45, 1)
+  dustSystem.color2 = new Color4(0.65, 0.52, 0.32, 0.8)
+  dustSystem.colorDead = new Color4(0.5, 0.4, 0.3, 0)
+  dustSystem.gravity = new Vector3(0, -6, 0)
+
   // Remote players
   const remotePlayers = new RemotePlayers(scene)
 
@@ -97,7 +126,13 @@ async function main() {
     const camYaw = springCam.getCamYaw()
     const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
-    if (!wasLanded && flight.landed) squashTimer = 0.25   // just touched down
+    if (!wasLanded && flight.landed) {
+      squashTimer = 0.25
+      // Dust burst on landing
+      ;(dustSystem.emitter as Vector3).copyFromFloats(flight.position.x, flight.position.y, flight.position.z)
+      dustSystem.reset()
+      dustSystem.start()
+    }
     springCam.update(flight, dt)
 
     // FOV speed feedback: lerp between 65 (normal) and 75 (max speed)
