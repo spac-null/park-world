@@ -21,19 +21,25 @@ The feel reference is N64 Banjo-Kazooie — not the visuals, but the weight of m
 ### Flight
 Full force-model physics in `FlightPhysics.ts`. Gravity, lift (quadratic falloff below stall speed), drag (gliding vs powered), horizontal carving. Direct bird-frame input — A/D bank, W/S pitch, Space flap. Tumble on hard crash. Coyote time on takeoff.
 
-The camera (`SpringCamera.ts`) has its own yaw that lazily follows the bird — this gap between bird direction and camera direction is where the Banjo feel lives. Right-click orbit, R to snap.
+**Body inertia roll**: underdamped spring on visual roll — when you bank right the body briefly tilts left first (Newton resistance), then swings into the turn and settles. `ROLL_SPRING=18`, `ROLL_DAMPING=5` (underdamped → overshoot).
+
+The camera (`SpringCamera.ts`) has its own yaw that lazily follows the bird — this gap is where the Banjo feel lives. Right-click orbit, R to snap.
 
 ### World
-Caldera terrain with vertex colors, bowl walls, central Spire (7-sided cylinder + torus rings). Mountain with cave and waterfall NE. Zone landmarks: Hollows (stone arches N), Canopy (tall pillars E), ScrapYard (debris W). 60 rocks + 45 trees via instancing. Sky dome, shadow map, bloom + FXAA + color grade post-processing.
+Caldera terrain with vertex colors, bowl walls, central Spire (7-sided cylinder + torus rings). Mountain with cave and waterfall NE. Zone landmarks: Hollows (stone arches N), Canopy (tall pillars E), ScrapYard (debris W). Sky dome, shadow map, bloom + FXAA + color grade post-processing.
+
+**Kenney nature kit** (CC0, `public/assets/kenney/`): 80 trees (tree_blocks + tree_fat heavy — most N64), 60 rocks (5 variants), 80 extras (mushrooms, stumps, logs, flowers, grass tufts). Load async after scene starts — world is flyable immediately, assets pop in. Path uses `import.meta.env.BASE_URL` so it works both locally and on GitHub Pages.
 
 ### NPC flock
-8 bird NPCs (`NpcFlock.ts`) with three behaviors: sideline (orbit player from a distance), scout (fly ahead and backward-face), orbit (circle overhead). Purely client-side, not networked.
+8 bird NPCs (`NpcFlock.ts`) with three behaviors: sideline, scout (backward-facing), orbit. Purely client-side, not networked. No chat behavior.
 
 ### Multiplayer
 WebSocket relay server (`park-server.py` on trident). Players see each other as birds with floating name labels. Positions interpolated smoothly. Auto-reconnect on drop.
 
 ### Chat traces
-Press **T**, type, Enter. Drops a graffiti tag billboard at your world position — player-colored tag shape, your name, white message text, random tilt. Floats up 1.8 units, fades after 90 seconds. Synced to all players. New joiners see traces younger than 90s (TTL-filtered on server).
+Press **T**, type, Enter. Bird glides naturally while typing (vel.y counter-gravity prevents nosedive). Drops a graffiti tag billboard at world position — rounded rect with player-colored stripe, name, white message, random ±8° tilt. Floats up 1.8 units, fades after 90s. Synced to all players. New joiners only see traces < 90s old (TTL on server).
+
+**Texture pipeline**: real HTML canvas → `DynamicTexture(name, canvas, scene)` → `emissiveTexture + opacityTexture` — full brightness, transparent corners. Babylon proxy canvas can't clearRect alpha reliably so the HTML canvas is used directly.
 
 Day/night cycle is coded (`DayNightCycle.ts`) but not yet wired into the game loop.
 
@@ -52,7 +58,7 @@ Day/night cycle is coded (`DayNightCycle.ts`) but not yet wired into the game lo
 | T | open chat (Enter to drop trace) |
 | Right-click drag | orbit camera |
 
-Mobile: nipplejs joystick for movement, flap/egg/rocket buttons present but not fully wired.
+Mobile: nipplejs joystick for movement. `isMobile` requires both touch support AND `window.innerWidth < 1024` — prevents MacBooks (which report `maxTouchPoints > 0`) from triggering mobile mode.
 
 ---
 
@@ -70,16 +76,19 @@ src/
   camera/
     SpringCamera.ts     lazy-yaw spring camera
   world/
-    WorldBuilder.ts     terrain, zones, vegetation
+    WorldBuilder.ts     terrain, zones, structure (sync)
     BirdMesh.ts         N64-style chunky bird mesh
-    DayNightCycle.ts    4-keyframe day/night (not wired)
+    DayNightCycle.ts    4-keyframe day/night (NOT WIRED)
     NpcFlock.ts         8 NPC birds, 3 behaviors
     TraceManager.ts     graffiti trace billboards
+    AssetLoader.ts      async Kenney GLB loader + placer
   network/
     WebSocketClient.ts  WS connect/reconnect/send
     RemotePlayers.ts    remote bird spawn/lerp/despawn
   ui/
     ChatInput.ts        T to open, Enter to submit
+
+public/assets/kenney/   20 GLB files (trees, rocks, mushrooms, flowers, extras)
 
 scripts/ops/
   park-server.py        WebSocket relay (on trident)
@@ -103,49 +112,49 @@ sudo systemctl restart park-server   # on trident
 
 ## Asset sources (free, CC0)
 
-All load client-side — server never sees them, multiplayer unaffected. Slow connections see late pop-in but can still fly and connect fine.
+All load client-side — server never sees them, multiplayer unaffected.
 
 | What | Source | Format |
 |------|--------|--------|
 | PBR textures (grass, rock, dirt, bark) | polyhaven.com / ambientcg.com | JPG → `PBRMaterial` |
-| Low-poly trees, rocks, nature | kenney.nl / quaternius.com | GLB → `SceneLoader.ImportMesh` |
+| Low-poly trees, rocks, nature | kenney.nl ✓ done | GLB → `AssetLoader` |
 | Searchable low-poly models | poly.pizza | GLB |
 | HDRI sky | polyhaven.com | HDR → `CubeTexture` |
 
-```ts
-// Texture from URL
-mat.diffuseTexture = new Texture("https://...", scene)
-
-// GLB model
-SceneLoader.ImportMesh("", "https://...", "tree.glb", scene, (meshes) => {
-  meshes[0].position.set(x, y, z)
-})
-```
-
-Biggest visual jump for least work: terrain PBR textures first, then replace procedural trees/rocks with Kenney assets, then HDRI sky.
-
 ---
 
-## Direction
+## Direction — what's next
 
-The game needs three more layers to feel complete:
+World needs to feel complete before weapons/interactions.
 
-**1. Identity** — right now everyone is named "player" and the bird looks the same. Name input on load (stored in localStorage), maybe a color picker. This makes traces meaningful and multiplayer feel real.
+**1. Wire day/night** — 5-minute job, already coded. World feels alive on its own.
 
-**2. Things to find** — the world is beautiful but passive. Gems scattered in hard-to-reach spots (top of Spire, inside the cave, behind the waterfall). No score — just the pop of finding one. Something unusual on each Canopy pillar. A reason to explore the whole caldera.
+**2. Identity** — name input on load (localStorage), maybe color picker. Everyone is "player" right now — traces are meaningless until this is done.
 
-**3. Interaction** — egg bombs: arc projectile, harmless knockback, funny not punishing. NPC birds scatter when you fly through them. The world reacts to you being in it.
+**3. Things to find** — gems in hard spots (top of Spire, inside cave, behind waterfall). No score, just the pop of finding one. Something on each Canopy pillar. A reason to explore the whole caldera.
 
-**4. Wire day/night** — 5-minute job, already coded. Makes the world feel alive on its own.
+**4. Interaction** — egg bombs (arc, knockback, funny). NPC birds scatter when you fly through them.
 
-After those four: mobile controls, rockets, and then assess what the game actually is based on how people play it.
+After those: mobile button wiring, rockets, assess based on how people play.
 
 ---
 
 ## Key decisions
 
 - No competitive mechanics ever — no score, no timer, no lives
-- Horizontal-only carving — vel.y owned by gravity/lift, carving never touches it
+- Horizontal-only carving — vel.y owned by gravity/lift only
 - Camera-relative input removed — direct bird-frame + lazy camera creates the feel
+- Glide while typing — physics keep running, only steering input is blocked
+- HTML canvas for trace textures — Babylon proxy can't clearRect alpha
 - Sound low priority — deaf player base
-- No reference to virtualPark.html — clean slate
+- `v0.1-foundation` tag = last commit before Kenney assets
+
+---
+
+## Known gotchas
+
+- `isMobile` must check `window.innerWidth < 1024` — MacBooks have `maxTouchPoints > 0`
+- Asset paths must use `import.meta.env.BASE_URL` — Vite base is `/park-world/` on Pages
+- Babylon `DynamicTexture` proxy: `clearRect` doesn't preserve alpha — use real HTML canvas + `drawImage` or `drawText` with `'transparent'` bg
+- `opacityTexture` reads alpha channel (not luminance) by default
+- `emissiveTexture` for unlit billboards — `diffuseTexture` goes dark in shadowed areas
