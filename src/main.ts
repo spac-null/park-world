@@ -213,6 +213,10 @@ async function main() {
     const camYaw = springCam.getCamYaw()
     const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
+    // While typing: gentle float so bird doesn't nosedive into floor
+    if (chatInput.active && !flight.landed && flight.velocity.y < 0) {
+      flight.velocity.y += PHYSICS.GRAVITY * 0.7 * dt
+    }
     if (!wasLanded && flight.landed) {
       squashTimer = 0.25
       // Dust burst on landing
