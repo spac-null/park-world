@@ -55,6 +55,7 @@ async function main() {
 
   // Squash/stretch state for landing
   let squashTimer = 0
+  let bobPhase = 0
 
   // Remote players
   const remotePlayers = new RemotePlayers(scene)
@@ -116,10 +117,11 @@ async function main() {
       wingR.rotation.z = -0.18 - flapAnim
     }
 
-    // Flight bob — organic oscillation at cruise, scales with speed
+    // Flight bob — phase accumulator avoids jumps when speed/freq changes on flap
     const bobFreq = 2.0 + flight.speed * 0.05
+    bobPhase += bobFreq * dt * Math.PI * 2
     const bobAmp  = flight.landed ? 0 : Math.min(flight.speed / 14, 1) * 0.18
-    const bob = Math.sin(now * 0.001 * bobFreq * Math.PI * 2) * bobAmp
+    const bob = Math.sin(bobPhase) * bobAmp
 
     squashTimer = Math.max(0, squashTimer - dt)
     const squashT = squashTimer / 0.25
