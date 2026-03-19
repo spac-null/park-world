@@ -91,6 +91,7 @@ async function main() {
 
   // Flight state — spawn above center
   const flight = createFlightState(0, 30, -20)
+  springCam.snap(flight)  // instant correct height — prevents first-frame upward-look (terrain backface culled)
 
   // Squash/stretch state for landing
   let squashTimer = 0

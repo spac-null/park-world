@@ -34,6 +34,25 @@ export class SpringCamera {
     return this.cam.fov
   }
 
+  // Snap camera to correct position instantly — call once on game start
+  snap(flight: FlightState) {
+    const C = CAMERA
+    this.camYaw = flight.yaw
+    this.camHeight = flight.position.y + C.ARM_HEIGHT
+    const sinCam = Math.sin(this.camYaw)
+    const cosCam = Math.cos(this.camYaw)
+    this.cam.position.set(
+      flight.position.x - sinCam * C.ARM_LENGTH,
+      this.camHeight,
+      flight.position.z - cosCam * C.ARM_LENGTH,
+    )
+    this.cam.setTarget(new Vector3(
+      flight.position.x,
+      flight.position.y,
+      flight.position.z + C.LOOK_AHEAD,
+    ))
+  }
+
   update(flight: FlightState, dt: number) {
     const { position, yaw, pitch, velocity } = flight
     this.birdYaw = yaw
