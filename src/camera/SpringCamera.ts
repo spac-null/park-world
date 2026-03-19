@@ -1,23 +1,17 @@
-import { Scene, Vector3, Camera, UniversalCamera } from '@babylonjs/core'
+import { Scene, Vector3, UniversalCamera, type Camera } from '@babylonjs/core'
 import type { FlightState } from '../types'
 import { CAMERA } from '../config'
 
 export class SpringCamera {
   private cam: UniversalCamera
-  private vel = Vector3.Zero()
-  private armLength: number
-  private fov: number
+  private camYaw = 0          // camera's own yaw — lazily follows bird
+  private camHeight = 0       // smoothed camera height
 
-  constructor(scene: Scene, canvas: HTMLCanvasElement) {
-    this.armLength = CAMERA.ARM_LENGTH
-    this.fov = CAMERA.DEFAULT_FOV
-
-    this.cam = new UniversalCamera('springCam', new Vector3(0, 20, -15), scene)
+  constructor(scene: Scene, _canvas: HTMLCanvasElement) {
+    this.cam = new UniversalCamera('cam', new Vector3(0, 20, -15), scene)
     this.cam.minZ = 0.5
-    this.cam.maxZ = 500
+    this.cam.maxZ = 600
     this.cam.fov = (CAMERA.DEFAULT_FOV * Math.PI) / 180
-    this.cam.attachControl(canvas, false)
-    // Disable default movement — we control it manually
     this.cam.inputs.clear()
   }
 
@@ -26,39 +20,36 @@ export class SpringCamera {
   }
 
   update(flight: FlightState, dt: number) {
-    const { position, yaw, pitch, bank } = flight
+    const { position, yaw, pitch } = flight
     const C = CAMERA
 
-    // Diving: extend arm, widen FOV
-    const diveRatio = Math.max(0, -pitch / C.DEFAULT_FOV)
-    const targetArmLength = C.ARM_LENGTH + diveRatio * C.DIVE_ARM_EXTEND
-    const targetFov = C.DEFAULT_FOV + diveRatio * (C.DIVE_FOV - C.DEFAULT_FOV)
-    this.armLength += (targetArmLength - this.armLength) * 6 * dt
-    this.fov       += (targetFov - this.fov) * 4 * dt
-    this.cam.fov    = (this.fov * Math.PI) / 180
+    // --- Banjo-style: camera has its own yaw that lazily follows bird yaw ---
+    // Shortest-path yaw delta (handles wrap-around)
+    let dyaw = yaw - this.camYaw
+    while (dyaw >  Math.PI) dyaw -= Math.PI * 2
+    while (dyaw < -Math.PI) dyaw += Math.PI * 2
+    this.camYaw += dyaw * Math.min(2.5 * dt, 1)
 
-    // Ideal camera position: behind + above bird, shifted for bank anticipation
-    const sinYaw = Math.sin(yaw)
-    const cosYaw = Math.cos(yaw)
+    // --- Fixed arm, no spring on distance ---
+    const sinCam = Math.sin(this.camYaw)
+    const cosCam = Math.cos(this.camYaw)
 
-    const idealX = position.x - sinYaw * this.armLength + (-bank * C.ANTICIPATION_STRENGTH) * cosYaw
-    const idealY = position.y + C.ARM_HEIGHT
-    const idealZ = position.z - cosYaw * this.armLength + (-bank * C.ANTICIPATION_STRENGTH) * -sinYaw
+    const targetHeight = position.y + C.ARM_HEIGHT
+    this.camHeight += (targetHeight - this.camHeight) * 5 * dt
 
-    const ideal = new Vector3(idealX, idealY, idealZ)
+    this.cam.position.set(
+      position.x - sinCam * C.ARM_LENGTH,
+      this.camHeight,
+      position.z - cosCam * C.ARM_LENGTH,
+    )
 
-    // Spring toward ideal
-    const C2 = CAMERA
-    const springForce = ideal.subtract(this.cam.position).scale(C2.SPRING_STIFFNESS)
-    this.vel.addInPlace(springForce.scale(dt))
-    this.vel.scaleInPlace(C2.SPRING_DAMPING)
-    this.cam.position.addInPlace(this.vel.scale(dt))
-
-    // Look target: ahead of bird, adjusted for pitch
-    const lookX = position.x + sinYaw * C.LOOK_AHEAD
-    const lookY = position.y + pitch * C.LOOK_AHEAD_PITCH_SCALE
-    const lookZ = position.z + cosYaw * C.LOOK_AHEAD
-
-    this.cam.setTarget(new Vector3(lookX, lookY, lookZ))
+    // --- Look target: slightly ahead of bird, pitch-adjusted ---
+    const sinBird = Math.sin(yaw)
+    const cosBird = Math.cos(yaw)
+    this.cam.setTarget(new Vector3(
+      position.x + sinBird * C.LOOK_AHEAD,
+      position.y + pitch * C.LOOK_AHEAD_PITCH_SCALE,
+      position.z + cosBird * C.LOOK_AHEAD,
+    ))
   }
 }

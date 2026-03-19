@@ -25,7 +25,7 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
 
   // --- Orientation ---
   if (!state.landed) {
-    const bankInput = input.bankLeft ? -1 : input.bankRight ? 1 : 0
+    const bankInput = input.bankLeft ? 1 : input.bankRight ? -1 : 0
     const pitchInput = input.pitchUp ? -1 : input.pitchDown ? 1 : 0
 
     // Mobile joystick overrides when significant
