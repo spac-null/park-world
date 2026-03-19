@@ -62,6 +62,13 @@ export class InputManager {
   }
 
   get(): InputState {
+    if (this.locked) {
+      this.state.pitchUp = false; this.state.pitchDown = false
+      this.state.bankLeft = false; this.state.bankRight = false
+      this.state.flap = false; this.state.egg = false; this.state.rocket = false
+      this.state.chat = false; this.state.joyX = 0; this.state.joyY = 0
+      return { ...this.state }
+    }
     if (!this.isMobile) {
       this.state.pitchUp    = this.keys.has('KeyW') || this.keys.has('ArrowUp')
       this.state.pitchDown  = this.keys.has('KeyS') || this.keys.has('ArrowDown')

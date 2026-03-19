@@ -1,10 +1,10 @@
 import { Scene, MeshBuilder, StandardMaterial, DynamicTexture, Mesh } from '@babylonjs/core'
 
-const LIFETIME      = 90    // seconds alive
-const FADE_START    = 80    // begin fade at 80s
-const BURST_DUR     = 0.45  // pop-in animation duration
-const FLOAT_HEIGHT  = 1.8   // units to drift upward after spawn
-const FLOAT_DUR     = 1.4   // seconds to complete float
+const LIFETIME      = 90
+const FADE_START    = 80
+const BURST_DUR     = 0.45
+const FLOAT_HEIGHT  = 1.8
+const FLOAT_DUR     = 1.4
 
 const TEX_W = 512
 const TEX_H = 200
@@ -15,24 +15,23 @@ interface Trace {
   mesh: Mesh
   mat: StandardMaterial
   age: number
-  burst: number     // counts down from BURST_DUR
+  burst: number
   baseY: number
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, font: string, maxW: number): string[] {
-  ctx.font = font
-  const words = text.split(' ')
+// Char-count word wrap — no measureText needed
+function splitLines(text: string): string[] {
+  const words = text.trim().split(' ')
   const lines: string[] = []
   let line = ''
   for (const w of words) {
     const test = line ? `${line} ${w}` : w
-    if (line && ctx.measureText(test).width > maxW) { lines.push(line); line = w }
+    if (line && test.length > 20) { lines.push(line); line = w }
     else line = test
   }
   if (line) lines.push(line)
   return lines.slice(0, 2)
 }
-
 
 export class TraceManager {
   private traces: Trace[] = []
@@ -42,41 +41,23 @@ export class TraceManager {
 
   drop(x: number, y: number, z: number, text: string, color: string, name: string) {
     const tex = new DynamicTexture(`trTex${Date.now()}`, { width: TEX_W, height: TEX_H }, this.scene, false)
-    const ctx = tex.getContext() as unknown as CanvasRenderingContext2D
 
-    // Background — player color, rounded rect
     const r = parseInt(color.slice(1, 3), 16) || 100
     const g = parseInt(color.slice(3, 5), 16) || 160
     const b = parseInt(color.slice(5, 7), 16) || 255
+    const bg = `rgb(${r},${g},${b})`
 
-    // Solid background — no alpha transparency needed
-    ctx.fillStyle = `rgb(${r},${g},${b})`
-    ctx.fillRect(0, 0, TEX_W, TEX_H)
+    // Use tex.drawText() — goes through real canvas, not the ICanvasRenderingContext proxy
+    // First call: fill background (clearColor) + draw name
+    tex.drawText(name.slice(0, 24), null, 42, 'bold 22px sans-serif', 'rgba(255,255,255,0.8)', bg, false, false)
 
-    // White border
-    ctx.strokeStyle = 'rgba(255,255,255,0.65)'
-    ctx.lineWidth = 4
-    ctx.strokeRect(3, 3, TEX_W - 6, TEX_H - 6)
+    // Message lines — clearColor='' is falsy → preserves background
+    const lines = splitLines(text)
+    const msgY = lines.length === 1 ? 130 : 104
+    tex.drawText(lines[0], null, msgY, 'bold 40px sans-serif', '#ffffff', '', false, false)
+    if (lines[1]) tex.drawText(lines[1], null, msgY + 52, 'bold 40px sans-serif', '#ffffff', '', false, false)
 
-    // Name — small, dimmed
-    ctx.fillStyle = 'rgba(255,255,255,0.72)'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(name.slice(0, 24), TEX_W / 2, 40)
-
-    // Separator
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'
-    ctx.fillRect(24, 52, TEX_W - 48, 1)
-
-    // Message — big, white
-    const msgFont = 'bold 40px sans-serif'
-    const lines = wrapText(ctx, text, msgFont, TEX_W - 44)
-    ctx.fillStyle = '#ffffff'
-    ctx.font = msgFont
-    const startY = lines.length === 1 ? 130 : 108
-    lines.forEach((ln, i) => ctx.fillText(ln, TEX_W / 2, startY + i * 52, TEX_W - 44))
-
-    tex.update()
+    tex.update(false)
 
     const plane = MeshBuilder.CreatePlane(`trace${Date.now()}`, {
       width: PLANE_W, height: PLANE_H,
@@ -84,7 +65,7 @@ export class TraceManager {
     }, this.scene)
     plane.billboardMode = Mesh.BILLBOARDMODE_ALL
     plane.position.set(x, y + 2, z)
-    plane.scaling.setAll(0)   // burst in from zero
+    plane.scaling.setAll(0)
 
     const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
     mat.diffuseTexture = tex
@@ -103,16 +84,15 @@ export class TraceManager {
       // Burst pop: 0 → 1.3 (fast) → 1.0 (settle)
       if (t.burst > 0) {
         t.burst = Math.max(0, t.burst - dt)
-        const p = 1 - t.burst / BURST_DUR           // progress 0→1
+        const p = 1 - t.burst / BURST_DUR
         const scale = p < 0.55
-          ? (p / 0.55) * 1.3                         // 0 → 1.3
-          : 1.3 - ((p - 0.55) / 0.45) * 0.3         // 1.3 → 1.0
+          ? (p / 0.55) * 1.3
+          : 1.3 - ((p - 0.55) / 0.45) * 0.3
         t.mesh.scaling.setAll(scale)
       }
 
       // Float upward
-      const rise = Math.min(t.age / FLOAT_DUR, 1) * FLOAT_HEIGHT
-      t.mesh.position.y = t.baseY + rise
+      t.mesh.position.y = t.baseY + Math.min(t.age / FLOAT_DUR, 1) * FLOAT_HEIGHT
 
       // Fade out last 10s
       if (t.age > FADE_START) {
