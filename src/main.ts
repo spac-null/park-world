@@ -8,6 +8,7 @@ import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
 import { createFlightState, tickFlight } from './physics/FlightPhysics'
 import { WorldBuilder, terrainY } from './world/WorldBuilder'
+import { loadNatureAssets } from './world/AssetLoader'
 import { createBirdMesh, getWings } from './world/BirdMesh'
 import { NpcFlock } from './world/NpcFlock'
 import { TraceManager } from './world/TraceManager'
@@ -49,9 +50,10 @@ async function main() {
   shadowGen.blurKernel = 16
   shadowGen.darkness = 0.35  // soft, not pitch black
 
-  // World
+  // World (sync structure first, Kenney assets async after)
   const world = new WorldBuilder(scene)
   world.build()
+  loadNatureAssets(scene).then(assets => world.buildNature(assets))
 
   // Mark key structures as shadow casters, terrain as receiver
   const casterNames = ['spire', 'rimN', 'rimE', 'rimS', 'rimW',

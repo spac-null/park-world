@@ -2,6 +2,7 @@ import {
   Scene, MeshBuilder, StandardMaterial, Color3, Mesh, DynamicTexture,
 } from '@babylonjs/core'
 import { WORLD } from '../config'
+import { type NatureAssets, place } from './AssetLoader'
 
 // Seeded pseudo-random — consistent layout across reloads
 function seededRand(seed: number) {
@@ -48,8 +49,71 @@ export class WorldBuilder {
     this.buildHollows()
     this.buildCanopy()
     this.buildScrapYard()
-    this.buildVegetation()
     this.buildMountain()
+  }
+
+  // Called after Kenney assets are loaded
+  buildNature(assets: NatureAssets) {
+    const rand  = seededRand(42)
+    const rand2 = seededRand(99)
+    const randB = seededRand(55)
+    const randF = seededRand(33)
+
+    // --- Trees (80) ---
+    for (let i = 0; i < 80; i++) {
+      const angle = rand2() * Math.PI * 2
+      const r     = 20 + rand2() * 140
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 12) continue
+      const y     = terrainY(x, z)
+      // tree_blocks + tree_fat most for Banjo feel, mix in others
+      const pick  = Math.floor(rand2() * 10)
+      const treeIdx = pick < 4 ? 0 : pick < 7 ? 1 : pick < 8 ? 3 : pick < 9 ? 4 : 2
+      const scale = 3.5 + rand2() * 2.5
+      place(assets.trees[treeIdx], x, y, z, scale, rand2() * Math.PI * 2)
+    }
+
+    // --- Rocks (60) ---
+    for (let i = 0; i < 60; i++) {
+      const angle = rand() * Math.PI * 2
+      const r     = 15 + rand() * 155
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 10) continue
+      const y     = terrainY(x, z)
+      const pick  = Math.floor(rand() * 5)
+      const scale = 1.5 + rand() * 2.5
+      place(assets.rocks[pick], x, y, z, scale, rand() * Math.PI * 2)
+    }
+
+    // --- Extras: mushrooms, stumps, logs, flowers, grass (80) ---
+    for (let i = 0; i < 80; i++) {
+      const angle = randB() * Math.PI * 2
+      const r     = 12 + randB() * 150
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 10) continue
+      const y     = terrainY(x, z)
+      const pick  = Math.floor(randB() * 7)
+      const scales = [1.8, 2.2, 1.5, 1.2, 1.2, 1.8, 2.0]
+      place(assets.extras[pick], x, y, z, scales[pick], randB() * Math.PI * 2)
+    }
+
+    // --- Flower patches (40, tight clusters) ---
+    for (let i = 0; i < 40; i++) {
+      const angle = randF() * Math.PI * 2
+      const r     = 8 + randF() * 140
+      const cx    = Math.cos(angle) * r
+      const cz    = Math.sin(angle) * r
+      const isRed = i % 2 === 0
+      for (let j = 0; j < 3; j++) {
+        const x = cx + (randF() * 4 - 2)
+        const z = cz + (randF() * 4 - 2)
+        const y = terrainY(x, z)
+        place(assets.extras[isRed ? 3 : 4], x, y, z, 1.5, randF() * Math.PI * 2)
+      }
+    }
   }
 
   private buildSky() {
@@ -233,119 +297,6 @@ export class WorldBuilder {
     })
   }
 
-  private buildVegetation() {
-    const rand = seededRand(42)
-
-    // --- Rocks (60 instances) ---
-    const rockBase = MeshBuilder.CreateSphere('rockBase', { diameter: 1, segments: 3 }, this.scene)
-    rockBase.isVisible = false
-    const rockMat = new StandardMaterial('rockMat', this.scene)
-    rockMat.diffuseColor = new Color3(0.52, 0.48, 0.42)
-    rockMat.specularColor = new Color3(0, 0, 0)
-    rockBase.material = rockMat
-
-    for (let i = 0; i < 60; i++) {
-      const angle = rand() * Math.PI * 2
-      const r     = 15 + rand() * 155        // avoid center spire area
-      const x     = Math.cos(angle) * r
-      const z     = Math.sin(angle) * r
-      if (Math.sqrt(x*x + z*z) < 10) continue  // clear spire base
-      const y = terrainY(x, z)
-      const sx = 1.2 + rand() * 2.5
-      const sy = 0.8 + rand() * 1.8
-      const sz = 1.0 + rand() * 2.2
-      const inst = rockBase.createInstance(`rock${i}`)
-      inst.position.set(x, y + sy * 0.4, z)
-      inst.scaling.set(sx, sy, sz)
-      inst.rotation.y = rand() * Math.PI * 2
-    }
-
-    // --- Trees: trunk + canopy (45 instances each) ---
-    const trunkBase = MeshBuilder.CreateCylinder('trunkBase', {
-      height: 1, diameterTop: 0.3, diameterBottom: 0.6, tessellation: 6,
-    }, this.scene)
-    trunkBase.isVisible = false
-    const trunkMat = new StandardMaterial('trunkMat', this.scene)
-    trunkMat.diffuseColor = new Color3(0.38, 0.26, 0.16)
-    trunkMat.specularColor = new Color3(0, 0, 0)
-    trunkBase.material = trunkMat
-
-    const canopyBase = MeshBuilder.CreateSphere('canopyBase', { diameter: 1, segments: 4 }, this.scene)
-    canopyBase.isVisible = false
-    const canopyMat = new StandardMaterial('canopyMat', this.scene)
-    canopyMat.diffuseColor = new Color3(0.22, 0.48, 0.18)
-    canopyMat.specularColor = new Color3(0, 0, 0)
-    canopyBase.material = canopyMat
-
-    // --- Bushes (60 instances) ---
-    const bushBase = MeshBuilder.CreateSphere('bushBase', { diameter: 1, segments: 3 }, this.scene)
-    bushBase.isVisible = false
-    const bushMat = new StandardMaterial('bushMat', this.scene)
-    bushMat.diffuseColor = new Color3(0.18, 0.40, 0.12)
-    bushMat.specularColor = new Color3(0, 0, 0)
-    bushBase.material = bushMat
-
-    const randB = seededRand(55)
-    for (let i = 0; i < 60; i++) {
-      const angle = randB() * Math.PI * 2
-      const r     = 12 + randB() * 150
-      const x     = Math.cos(angle) * r
-      const z     = Math.sin(angle) * r
-      if (Math.sqrt(x*x + z*z) < 10) continue
-      const y  = terrainY(x, z)
-      const sw = 1.5 + randB() * 2.5
-      const sh = 0.8 + randB() * 1.2
-      const inst = bushBase.createInstance(`bush${i}`)
-      inst.position.set(x, y + sh * 0.5, z)
-      inst.scaling.set(sw, sh, sw)
-      inst.rotation.y = randB() * Math.PI * 2
-    }
-
-    // --- Flower patches (80 tiny spheres) ---
-    const flowerBase = MeshBuilder.CreateSphere('flowerBase', { diameter: 0.3, segments: 2 }, this.scene)
-    flowerBase.isVisible = false
-    const flowerMat = new StandardMaterial('flowerMat', this.scene)
-    flowerMat.diffuseColor = new Color3(0.95, 0.85, 0.25)
-    flowerMat.specularColor = new Color3(0, 0, 0)
-    flowerBase.material = flowerMat
-
-    const flowerMat2 = new StandardMaterial('flowerMat2', this.scene)
-    flowerMat2.diffuseColor = new Color3(0.9, 0.3, 0.4)
-    flowerMat2.specularColor = new Color3(0, 0, 0)
-
-    const randF = seededRand(33)
-    for (let i = 0; i < 80; i++) {
-      const angle = randF() * Math.PI * 2
-      const r     = 8 + randF() * 140
-      const x     = Math.cos(angle) * r
-      const z     = Math.sin(angle) * r
-      const y     = terrainY(x, z)
-      const inst  = flowerBase.createInstance(`flower${i}`)
-      inst.position.set(x + randF() * 2 - 1, y + 0.3, z + randF() * 2 - 1)
-      if (i % 3 === 0) inst.material = flowerMat2
-    }
-
-    // --- Trees: trunk + canopy ---
-    const rand2 = seededRand(99)
-    for (let i = 0; i < 80; i++) {
-      const angle = rand2() * Math.PI * 2
-      const r     = 20 + rand2() * 140
-      const x     = Math.cos(angle) * r
-      const z     = Math.sin(angle) * r
-      if (Math.sqrt(x*x + z*z) < 12) continue
-      const y     = terrainY(x, z)
-      const h     = 4 + rand2() * 6          // tree height
-      const cw    = 2.5 + rand2() * 3        // canopy width
-
-      const trunk = trunkBase.createInstance(`trunk${i}`)
-      trunk.position.set(x, y + h / 2, z)
-      trunk.scaling.set(1, h, 1)
-
-      const canopy = canopyBase.createInstance(`canopy${i}`)
-      canopy.position.set(x, y + h + cw * 0.35, z)
-      canopy.scaling.set(cw, cw * 0.85, cw)
-    }
-  }
 
   private buildScrapYard() {
     // West sector — geometric debris
