@@ -1,0 +1,169 @@
+import type { FlightState, InputState } from '../types'
+import { PHYSICS } from '../config'
+
+export function createFlightState(x = 0, y = 20, z = 0): FlightState {
+  return {
+    position: { x, y, z },
+    velocity: { x: 0, y: 0, z: 0 },
+    yaw: 0, pitch: 0, bank: 0,
+    speed: 0,
+    landed: false,
+    tumbling: false,
+    tumbleTimer: 0,
+    timeSinceLastFlap: 999,
+    isGliding: false,
+  }
+}
+
+export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number): void {
+  if (state.tumbling) {
+    tickTumble(state, dt)
+    return
+  }
+
+  const p = PHYSICS
+
+  // --- Orientation ---
+  if (!state.landed) {
+    const bankInput = input.bankLeft ? -1 : input.bankRight ? 1 : 0
+    const pitchInput = input.pitchUp ? -1 : input.pitchDown ? 1 : 0
+
+    // Mobile joystick overrides when significant
+    const joyBank = Math.abs(input.joyX) > 0.3 ? input.joyX : bankInput
+    const joyPitch = Math.abs(input.joyY) > 0.3 ? -input.joyY : pitchInput
+
+    state.bank  += joyBank  * p.BANK_RATE  * dt
+    state.pitch += joyPitch * p.PITCH_RATE * dt
+    state.bank  = clamp(state.bank,  -p.MAX_BANK,  p.MAX_BANK)
+    state.pitch = clamp(state.pitch, -p.MAX_PITCH, p.MAX_PITCH)
+
+    // Bank decays toward 0 when no input
+    if (bankInput === 0 && Math.abs(input.joyX) < 0.1) {
+      state.bank *= (1 - 4 * dt)
+    }
+    // Pitch decays toward 0 slowly
+    if (pitchInput === 0 && Math.abs(input.joyY) < 0.1) {
+      state.pitch *= (1 - 2 * dt)
+    }
+
+    // Yaw from bank
+    state.yaw -= state.bank * p.BANK_TO_YAW * p.TURN_RATE * dt
+  }
+
+  // --- Forward vector ---
+  const cosYaw   = Math.cos(state.yaw)
+  const sinYaw   = Math.sin(state.yaw)
+  const cosPitch = Math.cos(state.pitch)
+  const sinPitch = Math.sin(state.pitch)
+
+  const fwdX = sinYaw * cosPitch
+  const fwdY = -sinPitch
+  const fwdZ = cosYaw * cosPitch
+
+  // --- Flap ---
+  state.timeSinceLastFlap += dt
+  if (input.flap && state.timeSinceLastFlap >= p.FLAP_COOLDOWN) {
+    state.timeSinceLastFlap = 0
+    const impulse = state.landed ? p.FLAP_IMPULSE * p.LAUNCH_BOOST : p.FLAP_IMPULSE
+    state.velocity.x += fwdX * 0.6 * impulse
+    state.velocity.y += (fwdY * 0.3 + 0.7) * impulse  // bias upward
+    state.velocity.z += fwdZ * 0.6 * impulse
+    if (state.landed) state.landed = false
+  }
+
+  if (state.landed) return
+
+  // --- Gravity ---
+  state.velocity.y -= p.GRAVITY * dt
+
+  // --- Lift ---
+  const hSpeed = Math.sqrt(state.velocity.x ** 2 + state.velocity.z ** 2)
+  const liftFactor = clamp(hSpeed / p.CRUISE_SPEED, 0, 1.2) ** 2
+  const lift = p.GRAVITY * p.LIFT_COEFFICIENT * liftFactor
+  state.velocity.y += lift * dt
+
+  // --- Drag ---
+  state.isGliding = state.timeSinceLastFlap > 0.5
+  const drag = state.isGliding ? p.GLIDE_DRAG : p.POWERED_DRAG
+  state.velocity.x *= (1 - drag * dt)
+  state.velocity.z *= (1 - drag * dt)
+  state.velocity.y *= (1 - drag * 0.3 * dt)
+
+  // --- Speed cap ---
+  state.speed = Math.sqrt(state.velocity.x ** 2 + state.velocity.y ** 2 + state.velocity.z ** 2)
+  if (state.speed > p.MAX_SPEED) {
+    const scale = p.MAX_SPEED / state.speed
+    state.velocity.x *= scale
+    state.velocity.y *= scale
+    state.velocity.z *= scale
+    state.speed = p.MAX_SPEED
+  }
+
+  // --- Integrate position ---
+  state.position.x += state.velocity.x * dt
+  state.position.y += state.velocity.y * dt
+  state.position.z += state.velocity.z * dt
+
+  // --- Terrain collision ---
+  const ground = terrainY(state.position.x, state.position.z) + 0.4
+  if (state.position.y < ground) {
+    state.position.y = ground
+    const impactSpeed = -state.velocity.y
+
+    if (impactSpeed > p.BOUNCE_HARD_THRESHOLD) {
+      // Crash
+      state.velocity.x *= 0.5
+      state.velocity.y = impactSpeed * p.BOUNCE_RESTITUTION
+      state.velocity.z *= 0.5
+      triggerTumble(state)
+    } else if (impactSpeed > p.BOUNCE_GENTLE_THRESHOLD) {
+      // Hard land
+      state.velocity.y = impactSpeed * p.BOUNCE_RESTITUTION * 0.5
+      state.velocity.x *= 0.6
+      state.velocity.z *= 0.6
+    } else {
+      // Gentle land
+      state.landed = true
+      state.velocity.x = 0
+      state.velocity.y = 0
+      state.velocity.z = 0
+      state.pitch = 0
+      state.bank = 0
+      state.speed = 0
+    }
+  }
+}
+
+function triggerTumble(state: FlightState) {
+  state.tumbling = true
+  state.tumbleTimer = PHYSICS.TUMBLE_DURATION
+}
+
+function tickTumble(state: FlightState, dt: number) {
+  state.tumbleTimer -= dt
+  // Spin on all axes during tumble
+  state.yaw   += 6 * dt
+  state.pitch += 4 * dt
+  state.bank  += 8 * dt
+  // Continue moving with reduced velocity
+  state.velocity.x *= 0.92
+  state.velocity.z *= 0.92
+  state.velocity.y -= PHYSICS.GRAVITY * dt * 0.5
+  state.position.x += state.velocity.x * dt
+  state.position.y += state.velocity.y * dt
+  state.position.z += state.velocity.z * dt
+
+  if (state.tumbleTimer <= 0) {
+    state.tumbling = false
+    state.tumbleTimer = 0
+    state.pitch = 0
+    state.bank = 0
+    state.velocity.x *= 0.3
+    state.velocity.z *= 0.3
+    state.velocity.y = 0
+  }
+}
+
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v))
+}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Park World</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #000; overflow: hidden; }
+      #renderCanvas {
+        width: 100vw; height: 100vh;
+        display: block; touch-action: none;
+      }
+      #joy-zone {
+        position: fixed; bottom: 24px; left: 20px;
+        width: 140px; height: 140px;
+        border-radius: 50%;
+        border: 2px dashed rgba(255,255,255,0.3);
+        pointer-events: all;
+        display: none;
+      }
+      #btn-flap {
+        position: fixed; bottom: 110px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.4);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #btn-egg {
+        position: fixed; bottom: 190px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,200,50,0.2);
+        border: 2px solid rgba(255,200,50,0.5);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #btn-rocket {
+        position: fixed; bottom: 270px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,100,50,0.2);
+        border: 2px solid rgba(255,100,50,0.5);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #hud {
+        position: fixed; top: 16px; left: 16px;
+        color: white; font-family: monospace; font-size: 12px;
+        pointer-events: none;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="joy-zone"></div>
+    <div id="btn-flap">FLAP</div>
+    <div id="btn-egg">EGG</div>
+    <div id="btn-rocket">🚀</div>
+    <div id="hud"></div>
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Show mobile controls if touch device
+      if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        document.getElementById('joy-zone').style.display = 'block'
+        document.getElementById('btn-flap').style.display  = 'flex'
+        document.getElementById('btn-egg').style.display   = 'flex'
+        document.getElementById('btn-rocket').style.display = 'flex'
+      }
+    </script>
+  </body>
+</html>

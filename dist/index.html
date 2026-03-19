@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Park World</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #000; overflow: hidden; }
+      #renderCanvas {
+        width: 100vw; height: 100vh;
+        display: block; touch-action: none;
+      }
+      #joy-zone {
+        position: fixed; bottom: 24px; left: 20px;
+        width: 140px; height: 140px;
+        border-radius: 50%;
+        border: 2px dashed rgba(255,255,255,0.3);
+        pointer-events: all;
+        display: none;
+      }
+      #btn-flap {
+        position: fixed; bottom: 110px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.4);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #btn-egg {
+        position: fixed; bottom: 190px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,200,50,0.2);
+        border: 2px solid rgba(255,200,50,0.5);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #btn-rocket {
+        position: fixed; bottom: 270px; right: 24px;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: rgba(255,100,50,0.2);
+        border: 2px solid rgba(255,100,50,0.5);
+        color: white; font-size: 11px; font-weight: bold;
+        display: none; align-items: center; justify-content: center;
+        cursor: pointer; user-select: none;
+      }
+      #hud {
+        position: fixed; top: 16px; left: 16px;
+        color: white; font-family: monospace; font-size: 12px;
+        pointer-events: none;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      }
+    </style>
+    <script type="module" crossorigin src="/park-world/assets/index-FeRotMA-.js"></script>
+    <link rel="modulepreload" crossorigin href="/park-world/assets/math.scalar.functions-PeE1O4gN.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/observable-DKD4yN_b.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/engineStore-CtIeXrE5.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/shaderStore-EocWwLxt.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/precisionDate-RE_jj6h0.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logger-mg9L1Pl1.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/tools.functions-DgLAVdeP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/typeStore-DUUqxwRN.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webRequest-B8JYqB6a.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/tools-BU_QFEFx.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/dataBuffer-BCFWe0KT.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/effectRenderer-B04rYfA-.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/math.vector-CeIablch.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pickingInfo-BKlLIoAD.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/decorators-zzNxQWmk.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/texture-D_pF15pa.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/thinEngine-BJHzShl1.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/textureTools-DM0nCNgE.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/cubemapToSphericalPolynomial-Ds0p8a_7.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/envTextureLoader-BwV9nQad.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/abstractAudioNode-Bn662OUI.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioBaseSubGraph-CExXCV-f.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/abstractAudioBus-0Mep7U_r.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/abstractSoundSource-BH4ql08E.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/abstractSoundInstance-CjFoKXV2.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/spatialWebAudioUpdaterComponent-ezZSaT7y.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/spatialWebAudio-BxLQyyt6.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioBus-DzWezTJD.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioMainBus-BKIaUz8q.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioStaticSound-C5SR_Hje.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioStreamingSound-CX8c6Mdi.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/webAudioSoundSource-CJ0ZeMW_.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/dds-CJKBRqR3.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/iesTextureLoader-CoNwivLq.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/exrTextureLoader-Bp-xgyXm.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/basisTextureLoader-C6OkccVR.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/ddsTextureLoader-o0Pa_znR.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/hdrTextureLoader-D9bISSb8.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/ktxTextureLoader-CC6WjKQJ.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/tgaTextureLoader-C_mcBty0.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/mesh.vertexData.functions-Dl_I-ZFH.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/dumpTools-CzppPnHa.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/backgroundUboDeclaration-bVvqhUHL.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bakedVertexAnimation-CSyN_pPM.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bonesDeclaration-C7cNW4gT.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bonesVertex-CH_-kiaF.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/boundingBoxRendererUboDeclaration-Xcqf3jvg.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragment-CPJCDhFP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragmentFunctions-BmxiVyTB.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragmentMainFunctions-C1bz6OF9.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpVertex-D8Hvu2Eg.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpVertexDeclaration-7x3faFW-.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneFragment-CdFdAd7x.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneFragmentDeclaration-BicozWal.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneVertex-BY9ZJna6.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneVertexDeclaration-C4thOguM.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clusteredLightingFunctions-BGiKdXjR.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/decalFragment-B81XftzC.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/oitFragment-VmBUSvTP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/samplerVertexImplementation-lCBAlp6x.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/defaultUboDeclaration-Lq2A9cWF.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogFragment-CQ3Recbz.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogFragmentDeclaration-CjXRVSoq.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogVertex-c7FEOFNO.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogVertexDeclaration-DK03ztfx.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/harmonicsFunctions-CuuS8RLw.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/hdrFilteringFunctions-DfX0s4T9.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/helperFunctions-CQJFTlJ7.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/imageProcessingDeclaration-C8-qyeAD.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/imageProcessingFunctions-BnwLXXb9.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/instancesDeclaration-BFmOpN1l.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/instancesVertex-k1zIs42L.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/kernelBlurVaryingDeclaration-DdVMx1FP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightFragment-CjNSqhJn.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightFragmentDeclaration-D8lQZgZB.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightUboDeclaration-BvyhOGpW.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightVxFragmentDeclaration-CZskXjTX.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightVxUboDeclaration--9t_NIaU.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightsFragmentFunctions-BwgHhFeR.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthDeclaration-JSzKVYDq.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthFragment-D1FXzEO8.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthVertex-B_nfkGpt.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/ltcHelperFunctions-EWS6QC01.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/mainUVVaryingDeclaration-DoWRqjoI.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/meshUboDeclaration-C-TnxR_l.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/meshVertexDeclaration-D8iw0EE6.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertex-StXjVtLS.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexDeclaration-CVaTN3H_.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexGlobal-DRGqx11z.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexGlobalDeclaration-DL01fmwm.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/openpbrUboDeclaration-Dbd0PzQI.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/packingFunctions-BDxa52RB.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrBRDFFunctions-CTq70ZqV.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrDebug-DtUjxd5r.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrUboDeclaration-gxwYeYkZ.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pointCloudVertex-z9nlAg6z.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/reflectionFunction-BWGv-mqw.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/samplerFragmentDeclaration-ZyBscj3c.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/sceneFragmentDeclaration-BVMzYoAY.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/sceneUboDeclaration-BDfPCklV.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/sceneVertexDeclaration-CQSKkWNN.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/screenSpaceRayTrace-D8DFf6CP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/shadowsFragmentFunctions-B6ArrjDp.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/shadowsVertex-CrUMeLMh.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/vertexColorMixing-ycOYA0vt.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lod.fragment-BoqZ8CNL.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lodCube.fragment-CB3esfhk.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pass.fragment-CKR0_iM0.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/passCube.fragment-CIJ6Ke7D.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/postprocess.vertex-BnvM3oPU.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/rgbdDecode.fragment-BtxdDOZT.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/rgbdEncode.fragment-DluifXM-.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/backgroundUboDeclaration-CHE9Vu3L.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bakedVertexAnimation-8AP0KkB_.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bonesDeclaration-JzMP3W26.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bonesVertex-BlpbDpst.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragment-D5_5KVc_.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragmentFunctions-C-nQHHWs.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpFragmentMainFunctions-Cbp5QnHE.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpVertex-Cu1PLKDB.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/bumpVertexDeclaration-DuGBwqFQ.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneFragment-BHRkVZD5.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneFragmentDeclaration-CK5CdIA6.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneVertex-CRUL_O2A.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clipPlaneVertexDeclaration-vfYdlXbm.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/clusteredLightingFunctions-DxpJe3-y.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/decalFragment-DPTfpEB2.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/defaultUboDeclaration-F2SbHgb5.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/oitFragment-CestLtra.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogFragment-DKm2SQ8H.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogFragmentDeclaration-ButpyGTO.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogVertex-D-l56oPp.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fogVertexDeclaration-FqX5WaDU.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/fresnelFunction-BCs1eOYV.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/harmonicsFunctions-CnHyAcYP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/hdrFilteringFunctions-Fv9tds-_.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/helperFunctions-CufsFrvT.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/imageProcessingDeclaration-IfTHpQrj.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/imageProcessingFunctions-D7NJKOA3.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/instancesDeclaration-PR0eJReD.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/instancesVertex-B4uGDxth.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/kernelBlurVaryingDeclaration-boPffQYU.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightFragment-CMoaA4wZ.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightUboDeclaration-Bh5U5y-f.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightVxUboDeclaration-CPZipFv5.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lightsFragmentFunctions-CGIhfKZZ.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthDeclaration-DcIQVZy9.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthFragment-aOg9kEpk.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/logDepthVertex-D7acsyfe.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/ltcHelperFunctions-C0M5WV4r.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/mainUVVaryingDeclaration-t1q4Q7O5.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/meshUboDeclaration-DQRd5bcM.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertex-CK5KjzEP.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexDeclaration-DN4wDSP1.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexGlobal-XJayplug.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/morphTargetsVertexGlobalDeclaration-DAzb1CYI.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/openpbrUboDeclaration-DHecJhOq.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/packingFunctions-D2-Hyckw.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrBRDFFunctions-i4FN1kuo.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrDebug-CcMxnDtE.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pbrUboDeclaration-Bb11OZCN.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/samplerVertexImplementation-3Imt4YgB.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/reflectionFunction-BqpNdwLN.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/samplerFragmentDeclaration-BvJwqv_V.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/sceneUboDeclaration-gkZG8adb.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/screenSpaceRayTrace-BB0WHAHW.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/shadowsFragmentFunctions-D4ULTQ1F.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/shadowsVertex-gCm2dtM7.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/vertexColorMixing-BHavNsBL.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lod.fragment-DdrtdGEs.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/lodCube.fragment-BPUELeHe.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/pass.fragment-ka4IFiP0.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/passCube.fragment-D4jB1qtu.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/postprocess.vertex-D6kOPs9T.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/rgbdDecode.fragment-ui27rwdL.js">
+    <link rel="modulepreload" crossorigin href="/park-world/assets/rgbdEncode.fragment-RDlY2cK5.js">
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="joy-zone"></div>
+    <div id="btn-flap">FLAP</div>
+    <div id="btn-egg">EGG</div>
+    <div id="btn-rocket">🚀</div>
+    <div id="hud"></div>
+    <script>
+      // Show mobile controls if touch device
+      if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        document.getElementById('joy-zone').style.display = 'block'
+        document.getElementById('btn-flap').style.display  = 'flex'
+        document.getElementById('btn-egg').style.display   = 'flex'
+        document.getElementById('btn-rocket').style.display = 'flex'
+      }
+    </script>
+  </body>
+</html>
