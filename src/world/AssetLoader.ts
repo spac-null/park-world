@@ -1,7 +1,7 @@
 import { Scene, SceneLoader, AssetContainer } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
 
-const BASE = '/assets/kenney/'
+const BASE = `${import.meta.env.BASE_URL}assets/kenney/`
 const load = (scene: Scene, name: string) =>
   SceneLoader.LoadAssetContainerAsync(BASE, name, scene)
 
