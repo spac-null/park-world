@@ -253,7 +253,7 @@ export class WorldBuilder {
         width: d.sx, height: d.sy, depth: d.sz,
       }, this.scene)
       box.position.set(d.x, terrainY(d.x, d.z) + d.sy / 2, d.z)
-      box.rotation.y = Math.random() * Math.PI
+      box.rotation.y = (i * 1.7 + 0.5) % Math.PI
       const mat = new StandardMaterial(`debrisMat${i}`, this.scene)
       mat.diffuseColor = new Color3(0.42, 0.36, 0.30)
       mat.specularColor = new Color3(0, 0, 0)

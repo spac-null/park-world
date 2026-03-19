@@ -9,7 +9,7 @@ import { WorldBuilder, terrainY } from './world/WorldBuilder'
 import { createBirdMesh, getWings } from './world/BirdMesh'
 import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
-import { CAMERA } from './config'
+import { CAMERA, PHYSICS } from './config'
 
 async function main() {
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
@@ -100,7 +100,7 @@ async function main() {
     springCam.update(flight, dt)
 
     // FOV speed feedback: lerp between 65 (normal) and 75 (max speed)
-    const { MAX_SPEED } = { MAX_SPEED: 28 }
+    const { MAX_SPEED } = PHYSICS
     const speedFrac = Math.min(flight.speed / MAX_SPEED, 1)
     const targetFov = CAMERA.DEFAULT_FOV + (75 - CAMERA.DEFAULT_FOV) * speedFrac
     const currentFovDeg = (springCam.getCamera() as any).fov * 180 / Math.PI
@@ -126,8 +126,9 @@ async function main() {
     const squashY = 1 - squashT * 0.35        // compress Y
     const squashXZ = 1 + squashT * 0.2        // expand XZ
 
-    // N64 crash flicker — rapid visibility toggle while stunned
-    birdRoot.isVisible = !flight.tumbling || Math.floor(now / 70) % 2 === 0
+    // N64 crash flicker — rapid visibility toggle while stunned (root is TransformNode, toggle children)
+    const flickerOn = !flight.tumbling || Math.floor(now / 70) % 2 === 0
+    for (const m of birdRoot.getChildMeshes()) m.isVisible = flickerOn
 
     // Sync bird mesh
     birdRoot.position.set(
