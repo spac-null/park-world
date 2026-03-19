@@ -53,6 +53,9 @@ async function main() {
   // Flight state — spawn above center
   const flight = createFlightState(0, 30, -20)
 
+  // Squash/stretch state for landing
+  let squashTimer = 0
+
   // Remote players
   const remotePlayers = new RemotePlayers(scene)
 
@@ -111,13 +114,32 @@ async function main() {
       wingR.rotation.z = -0.18 - flapAnim
     }
 
-    // Sync bird mesh — quaternion so bank/pitch compose correctly at any yaw
-    birdRoot.position.set(flight.position.x, flight.position.y, flight.position.z)
+    // Flight bob — organic oscillation at cruise, scales with speed
+    const bobFreq = 2.0 + flight.speed * 0.05
+    const bobAmp  = flight.landed ? 0 : Math.min(flight.speed / 14, 1) * 0.18
+    const bob = Math.sin(now * 0.001 * bobFreq * Math.PI * 2) * bobAmp
+
+    // Landing squash — detect touchdown, play squash/stretch
+    const wasLanded = flight.landed
+    if (wasLanded && squashTimer <= 0) squashTimer = 0
+    if (!wasLanded && flight.landed) squashTimer = 0.25   // just landed
+    squashTimer = Math.max(0, squashTimer - dt)
+    const squashT = squashTimer / 0.25
+    const squashY = 1 - squashT * 0.35        // compress Y
+    const squashXZ = 1 + squashT * 0.2        // expand XZ
+
+    // Sync bird mesh
+    birdRoot.position.set(
+      flight.position.x,
+      flight.position.y + bob,
+      flight.position.z,
+    )
     birdRoot.rotationQuaternion = Quaternion.RotationYawPitchRoll(
       flight.yaw,
       flight.pitch * 0.6,
       -flight.bank * 0.5,
     )
+    birdRoot.scaling.set(squashXZ, squashY, squashXZ)
 
     // Remote players
     remotePlayers.tick(dt)

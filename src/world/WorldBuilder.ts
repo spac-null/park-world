@@ -3,6 +3,12 @@ import {
 } from '@babylonjs/core'
 import { WORLD } from '../config'
 
+// Seeded pseudo-random — consistent layout across reloads
+function seededRand(seed: number) {
+  let s = seed
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646 }
+}
+
 // Terrain height function — authored shape, not pure noise
 export function terrainY(x: number, z: number): number {
   // Caldera bowl: rises toward edges
@@ -33,6 +39,7 @@ export class WorldBuilder {
     this.buildHollows()
     this.buildCanopy()
     this.buildScrapYard()
+    this.buildVegetation()
   }
 
   private buildTerrain() {
@@ -165,6 +172,71 @@ export class WorldBuilder {
       pillar.material = mat
       pillar.checkCollisions = true
     })
+  }
+
+  private buildVegetation() {
+    const rand = seededRand(42)
+
+    // --- Rocks (60 instances) ---
+    const rockBase = MeshBuilder.CreateSphere('rockBase', { diameter: 1, segments: 3 }, this.scene)
+    rockBase.isVisible = false
+    const rockMat = new StandardMaterial('rockMat', this.scene)
+    rockMat.diffuseColor = new Color3(0.52, 0.48, 0.42)
+    rockMat.specularColor = new Color3(0, 0, 0)
+    rockBase.material = rockMat
+
+    for (let i = 0; i < 60; i++) {
+      const angle = rand() * Math.PI * 2
+      const r     = 15 + rand() * 155        // avoid center spire area
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 10) continue  // clear spire base
+      const y = terrainY(x, z)
+      const sx = 1.2 + rand() * 2.5
+      const sy = 0.8 + rand() * 1.8
+      const sz = 1.0 + rand() * 2.2
+      const inst = rockBase.createInstance(`rock${i}`)
+      inst.position.set(x, y + sy * 0.4, z)
+      inst.scaling.set(sx, sy, sz)
+      inst.rotation.y = rand() * Math.PI * 2
+    }
+
+    // --- Trees: trunk + canopy (45 instances each) ---
+    const trunkBase = MeshBuilder.CreateCylinder('trunkBase', {
+      height: 1, diameterTop: 0.3, diameterBottom: 0.6, tessellation: 6,
+    }, this.scene)
+    trunkBase.isVisible = false
+    const trunkMat = new StandardMaterial('trunkMat', this.scene)
+    trunkMat.diffuseColor = new Color3(0.38, 0.26, 0.16)
+    trunkMat.specularColor = new Color3(0, 0, 0)
+    trunkBase.material = trunkMat
+
+    const canopyBase = MeshBuilder.CreateSphere('canopyBase', { diameter: 1, segments: 4 }, this.scene)
+    canopyBase.isVisible = false
+    const canopyMat = new StandardMaterial('canopyMat', this.scene)
+    canopyMat.diffuseColor = new Color3(0.22, 0.48, 0.18)
+    canopyMat.specularColor = new Color3(0, 0, 0)
+    canopyBase.material = canopyMat
+
+    const rand2 = seededRand(99)
+    for (let i = 0; i < 45; i++) {
+      const angle = rand2() * Math.PI * 2
+      const r     = 20 + rand2() * 140
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 12) continue
+      const y     = terrainY(x, z)
+      const h     = 4 + rand2() * 6          // tree height
+      const cw    = 2.5 + rand2() * 3        // canopy width
+
+      const trunk = trunkBase.createInstance(`trunk${i}`)
+      trunk.position.set(x, y + h / 2, z)
+      trunk.scaling.set(1, h, 1)
+
+      const canopy = canopyBase.createInstance(`canopy${i}`)
+      canopy.position.set(x, y + h + cw * 0.35, z)
+      canopy.scaling.set(cw, cw * 0.85, cw)
+    }
   }
 
   private buildScrapYard() {

@@ -6,6 +6,7 @@ export class SpringCamera {
   private cam: UniversalCamera
   private camYaw = 0
   private camHeight = 0
+  private birdYaw = 0
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.cam = new UniversalCamera('cam', new Vector3(0, 20, -15), scene)
@@ -30,6 +31,7 @@ export class SpringCamera {
 
   update(flight: FlightState, dt: number) {
     const { position, yaw, pitch, velocity } = flight
+    this.birdYaw = yaw
     const C = CAMERA
 
     // --- Banjo-style: camera has its own yaw that lazily follows bird yaw ---
@@ -67,14 +69,15 @@ export class SpringCamera {
     ))
   }
 
+  snapBehind(birdYaw: number) {
+    this.camYaw = birdYaw
+  }
+
   private setupOrbit(canvas: HTMLCanvasElement) {
     let dragging = false
     let lastX = 0
     canvas.addEventListener('mousedown', e => {
-      if (e.button === 2) {
-        dragging = true
-        lastX = e.clientX
-      }
+      if (e.button === 2) { dragging = true; lastX = e.clientX }
     })
     window.addEventListener('mouseup', () => { dragging = false })
     window.addEventListener('mousemove', e => {
@@ -83,5 +86,9 @@ export class SpringCamera {
       lastX = e.clientX
     })
     canvas.addEventListener('contextmenu', e => e.preventDefault())
+    // Camera reset: R key snaps behind bird
+    window.addEventListener('keydown', e => {
+      if (e.code === 'KeyR') this.snapBehind(this.birdYaw)
+    })
   }
 }
