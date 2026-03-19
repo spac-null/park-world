@@ -9,6 +9,7 @@ import { SpringCamera } from './camera/SpringCamera'
 import { createFlightState, tickFlight } from './physics/FlightPhysics'
 import { WorldBuilder, terrainY } from './world/WorldBuilder'
 import { createBirdMesh, getWings } from './world/BirdMesh'
+import { NpcFlock } from './world/NpcFlock'
 import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
 import { CAMERA, PHYSICS } from './config'
@@ -124,6 +125,9 @@ async function main() {
   dustSystem.colorDead = new Color4(0.5, 0.4, 0.3, 0)
   dustSystem.gravity = new Vector3(0, -6, 0)
 
+  // NPC flock — 8 birds, can fly sideline, backward, orbit
+  const npcFlock = new NpcFlock(scene, 8)
+
   // Remote players
   const remotePlayers = new RemotePlayers(scene)
 
@@ -218,6 +222,10 @@ async function main() {
       -flight.bank * 0.5,
     )
     birdRoot.scaling.set(squashXZ, squashY, squashXZ)
+
+    // NPC flock
+    const pPos = new Vector3(flight.position.x, flight.position.y, flight.position.z)
+    npcFlock.tick(dt, pPos, flight.yaw)
 
     // Remote players
     remotePlayers.tick(dt)
