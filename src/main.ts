@@ -207,7 +207,9 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.05)
     last = now
 
-    const inp = input.get()
+    const inp = chatInput.active
+      ? { pitchUp:false, pitchDown:false, bankLeft:false, bankRight:false, flap:false, egg:false, rocket:false, chat:false, joyX:0, joyY:0 }
+      : input.get()
     const camYaw = springCam.getCamYaw()
     const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
