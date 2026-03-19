@@ -42,26 +42,29 @@ export class SpringCamera {
     const sinCam = Math.sin(this.camYaw)
     const cosCam = Math.cos(this.camYaw)
 
-    // Vertical auto-adjust: faster height lerp when bird moves fast vertically
-    const vSpeed = Math.abs(velocity.y)
-    const heightLerpRate = 5 + vSpeed * 0.5
-    const targetHeight = position.y + C.ARM_HEIGHT
+    // Camera height: snap faster when diving (velocity.y < 0) so camera doesn't lag behind
+    const vSpeed = velocity.y
+    const heightLerpRate = vSpeed < -2 ? 12 : 5 + Math.abs(vSpeed) * 0.5
+    const targetHeight = position.y + C.ARM_HEIGHT + pitch * 2  // lean down when pitching down
     this.camHeight += (targetHeight - this.camHeight) * heightLerpRate * dt
 
-    // Camera position — arm behind bird, slightly elevated
+    // Camera position — arm behind bird
     this.cam.position.set(
       position.x - sinCam * C.ARM_LENGTH,
       this.camHeight,
       position.z - cosCam * C.ARM_LENGTH,
     )
 
-    // --- Look target: slightly ahead of bird, pitch-adjusted, with 15° downward tilt ---
-    const sinBird = Math.sin(yaw)
-    const cosBird = Math.cos(yaw)
-    const lookAheadX = position.x + sinBird * C.LOOK_AHEAD
-    const lookAheadZ = position.z + cosBird * C.LOOK_AHEAD
-    const lookAheadY = position.y + pitch * C.LOOK_AHEAD_PITCH_SCALE - C.ARM_LENGTH * Math.tan(15 * Math.PI / 180)
-    this.cam.setTarget(new Vector3(lookAheadX, lookAheadY, lookAheadZ))
+    // Look target: ahead of bird in full 3D facing direction
+    const cosPitch = Math.cos(pitch)
+    const sinPitch = Math.sin(pitch)
+    const sinBird  = Math.sin(yaw)
+    const cosBird  = Math.cos(yaw)
+    this.cam.setTarget(new Vector3(
+      position.x + sinBird * cosPitch * C.LOOK_AHEAD,
+      position.y - sinPitch * C.LOOK_AHEAD,
+      position.z + cosBird * cosPitch * C.LOOK_AHEAD,
+    ))
   }
 
   private setupOrbit(canvas: HTMLCanvasElement) {

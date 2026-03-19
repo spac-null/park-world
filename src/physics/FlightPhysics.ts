@@ -15,7 +15,7 @@ export function createFlightState(x = 0, y = 20, z = 0): FlightState {
   }
 }
 
-export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number, camYaw = 0): void {
+export function tickFlight(state: FlightState, input: InputState, dt: number, terrainY: (x: number, z: number) => number, _camYaw = 0): void {
   if (state.tumbling) {
     tickTumble(state, dt)
     return
@@ -28,16 +28,9 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
     const rawBankInput = input.bankLeft ? 1 : input.bankRight ? -1 : 0
     const rawPitchInput = input.pitchUp ? -1 : input.pitchDown ? 1 : 0
 
-    // Mobile joystick overrides when significant
-    const rawJoyBank = Math.abs(input.joyX) > 0.3 ? input.joyX : rawBankInput
-    const rawJoyPitch = Math.abs(input.joyY) > 0.3 ? -input.joyY : rawPitchInput
-
-    // Camera-relative input: rotate joystick by offset between camYaw and bird yaw
-    const offset = camYaw - state.yaw
-    const cosO = Math.cos(offset)
-    const sinO = Math.sin(offset)
-    const joyBank  =  rawJoyBank  * cosO + rawJoyPitch * sinO
-    const joyPitch = -rawJoyBank  * sinO + rawJoyPitch * cosO
+    // Direct bird-frame input — no camera mixing (prevents nose-up when banking)
+    const joyBank  = Math.abs(input.joyX) > 0.3 ? input.joyX  : rawBankInput
+    const joyPitch = Math.abs(input.joyY) > 0.3 ? -input.joyY : rawPitchInput
 
     state.bank  += joyBank  * p.BANK_RATE  * dt
     state.pitch += joyPitch * p.PITCH_RATE * dt

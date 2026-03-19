@@ -1,6 +1,6 @@
 import {
   Engine, Scene, Vector3, HemisphericLight, DirectionalLight,
-  Color3, Color4,
+  Color3, Color4, Quaternion,
 } from '@babylonjs/core'
 import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
@@ -111,11 +111,13 @@ async function main() {
       wingR.rotation.z = -0.18 - flapAnim
     }
 
-    // Sync bird mesh
+    // Sync bird mesh — quaternion so bank/pitch compose correctly at any yaw
     birdRoot.position.set(flight.position.x, flight.position.y, flight.position.z)
-    birdRoot.rotation.y = flight.yaw
-    birdRoot.rotation.x = flight.pitch * 0.6
-    birdRoot.rotation.z = -flight.bank * 0.5
+    birdRoot.rotationQuaternion = Quaternion.RotationYawPitchRoll(
+      flight.yaw,
+      flight.pitch * 0.6,
+      -flight.bank * 0.5,
+    )
 
     // Remote players
     remotePlayers.tick(dt)
