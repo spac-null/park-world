@@ -10,8 +10,10 @@ import { createFlightState, tickFlight } from './physics/FlightPhysics'
 import { WorldBuilder, terrainY } from './world/WorldBuilder'
 import { createBirdMesh, getWings } from './world/BirdMesh'
 import { NpcFlock } from './world/NpcFlock'
+import { TraceManager } from './world/TraceManager'
 import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
+import { ChatInput } from './ui/ChatInput'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
@@ -25,6 +27,7 @@ async function main() {
   engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio * 0.75, 1.5))
 
   const scene = new Scene(engine)
+  ;(window as any).__scene = scene  // debug: temporary
   scene.clearColor = new Color4(0.54, 0.74, 0.91, 1)  // matches sky horizon
   scene.fogMode = Scene.FOGMODE_EXP2
   scene.fogDensity = 0.005
@@ -143,17 +146,26 @@ async function main() {
   // Reusable network move object — avoids alloc when below send interval
   const _moveMsg = { x: 0, y: 0, z: 0, rotY: 0, name: 'player', role: 'bird' as const, speed: 0 }
 
-  // Remote players
+  // Remote players + traces
   const remotePlayers = new RemotePlayers(scene)
+  const traceManager = new TraceManager(scene)
 
   // Network
   const net = new WebSocketClient()
+  let myColor = '#88aaff'
+  let myName  = 'bird'
 
   net.on('welcome', (msg: any) => {
+    if (msg.color) myColor = msg.color
     if (msg.players) {
       for (const p of msg.players) {
         remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')
         remotePlayers.update(p.id, p.x ?? 0, p.y ?? 20, p.z ?? 0, p.rotY ?? 0)
+      }
+    }
+    if (msg.recent_traces) {
+      for (const t of msg.recent_traces) {
+        traceManager.drop(t.x, t.y, t.z, t.text, t.color || '#88aaff', t.name || 'bird')
       }
     }
   })
@@ -170,6 +182,22 @@ async function main() {
     remotePlayers.remove(msg.id)
   })
 
+  net.on('trace', (msg: any) => {
+    traceManager.drop(msg.x, msg.y, msg.z, msg.text, msg.color, msg.name)
+  })
+
+  // Chat — T to open, Enter to drop trace at current position
+  const chatInput = new ChatInput((text) => {
+    const { x, y, z } = flight.position
+    traceManager.drop(x, y, z, text, myColor, myName)
+    net.send({ type: 'trace', x, y, z, text, color: myColor, name: myName })
+  })
+
+  window.addEventListener('keydown', e => {
+    if (e.code === 'KeyT' && !chatInput.active) { e.preventDefault(); chatInput.open() }
+    if (e.code === 'Escape' && chatInput.active) chatInput.close()
+  })
+
   net.connect()
 
   // Game loop
@@ -179,7 +207,9 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.05)
     last = now
 
-    const inp = input.get()
+    const inp = chatInput.active
+      ? { pitchUp:false, pitchDown:false, bankLeft:false, bankRight:false, flap:false, egg:false, rocket:false, chat:false, joyX:0, joyY:0 }
+      : input.get()
     const camYaw = springCam.getCamYaw()
     const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
@@ -241,6 +271,9 @@ async function main() {
       birdRoot.rotationQuaternion!,
     )
     birdRoot.scaling.set(squashXZ, squashY, squashXZ)
+
+    // Traces
+    traceManager.tick(dt)
 
     // NPC flock — pass scalars, no Vector3 alloc
     npcFlock.tick(dt, flight.position.x, flight.position.y, flight.position.z, flight.yaw, now)

@@ -52,6 +52,29 @@
         pointer-events: none;
         text-shadow: 0 1px 3px rgba(0,0,0,0.8);
       }
+      #chat-bar {
+        display: none;
+        position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+        width: min(480px, 90vw);
+        background: rgba(0,0,0,0.72);
+        border: 2px solid rgba(255,255,255,0.28);
+        border-radius: 14px;
+        padding: 10px 18px 12px;
+        flex-direction: column; gap: 4px;
+        z-index: 100;
+      }
+      #chat-hint {
+        color: rgba(255,255,255,0.45);
+        font-family: monospace; font-size: 11px;
+        letter-spacing: 0.04em;
+      }
+      #chat-input {
+        background: transparent; border: none; outline: none;
+        color: #fff; caret-color: #fff;
+        font-family: monospace; font-size: 22px;
+        width: 100%;
+      }
+      #chat-input::placeholder { color: rgba(255,255,255,0.3); }
     </style>
   </head>
   <body>
@@ -61,6 +84,10 @@
     <div id="btn-egg">EGG</div>
     <div id="btn-rocket">🚀</div>
     <div id="hud"></div>
+    <div id="chat-bar">
+      <div id="chat-hint">T to chat · Enter to send · Esc to cancel</div>
+      <input id="chat-input" type="text" maxlength="60" autocomplete="off" placeholder="say something..." />
+    </div>
     <script type="module" src="/src/main.ts"></script>
     <script>
       // Show mobile controls if touch device
