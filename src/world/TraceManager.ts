@@ -89,10 +89,9 @@ export class TraceManager {
 
     ctx.restore()
 
-    // Upload to GPU via ImageData
-    const tex = new DynamicTexture(`trTex${Date.now()}`, { width: TEX_W, height: TEX_H }, this.scene, false)
-    const bCtx = tex.getContext() as unknown as CanvasRenderingContext2D
-    bCtx.drawImage(canvas, 0, 0)
+    // Pass HTML canvas directly — Babylon uses it as-is, preserving alpha
+    const tex = new DynamicTexture(`trTex${Date.now()}`, canvas, this.scene, false)
+    tex.hasAlpha = true
     tex.update()
 
     const plane = MeshBuilder.CreatePlane(`trace${Date.now()}`, {
@@ -104,7 +103,8 @@ export class TraceManager {
     plane.scaling.setAll(0)
 
     const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
-    mat.emissiveTexture = tex    // full brightness regardless of scene lighting
+    mat.emissiveTexture = tex    // full brightness regardless of lighting
+    mat.opacityTexture  = tex    // alpha channel → transparent outside rounded rect
     mat.disableLighting = true
     mat.backFaceCulling = false
     plane.material = mat
