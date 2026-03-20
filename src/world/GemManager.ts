@@ -2,7 +2,7 @@ import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { terrainY } from './WorldBuilder'
 
 const STORAGE_KEY   = 'park-world-gems'
-const COLLECT_DIST2 = 4.5 * 4.5   // wider — easier for a child to grab
+const COLLECT_DIST2 = 8 * 8   // very generous — fly near the pillar and it pops
 export const GEM_TOTAL = 5
 
 // [x, z, height above terrain, label]
@@ -55,18 +55,17 @@ export class GemManager {
       mat.disableLighting = true
       mesh.material = mat
 
-      // Beacon pillar — tall thin glowing column visible from across the map
-      // Bloom turns this into a coloured light shaft
+      // Beacon pillar — wide glowing column, fly into it to collect
       const beam = MeshBuilder.CreateCylinder(`gemBeam${i}`, {
-        height: 70, diameter: 0.5, tessellation: 6,
+        height: 80, diameter: 5, tessellation: 8,
       }, scene)
-      beam.position.set(gx, gy + 35, gz)
+      beam.position.set(gx, gy + 40, gz)
       beam.isPickable = false
 
       const beamMat = new StandardMaterial(`gemBeamMat${i}`, scene)
       beamMat.emissiveColor = color.clone()
       beamMat.disableLighting = true
-      beamMat.alpha = 0.45
+      beamMat.alpha = 0.35
       beamMat.backFaceCulling = false
       beam.material = beamMat
 
@@ -86,10 +85,13 @@ export class GemManager {
       g.mesh.rotation.y = g.phase
       g.mesh.position.y += Math.sin(g.phase * 0.7) * 0.008
 
-      // Pulse emissive on gem
+      // Pulse emissive on gem + scale pulse on beam
       const pulse = 0.7 + Math.sin(g.phase * 1.4) * 0.3
       const base = GEM_COLORS[g.idx % GEM_COLORS.length]
       g.mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse)
+      const beamPulse = 1 + Math.sin(g.phase * 0.8) * 0.15
+      g.beam.scaling.x = beamPulse
+      g.beam.scaling.z = beamPulse
 
       // Collect
       const dx = px - g.mesh.position.x
