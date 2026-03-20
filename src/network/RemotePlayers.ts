@@ -38,6 +38,16 @@ export class RemotePlayers {
     this.players.delete(id)
   }
 
+  countNear(cx: number, cz: number, r2: number, minY: number): number {
+    let n = 0
+    this.players.forEach(p => {
+      const pos = p.mesh.position
+      const dx = pos.x - cx, dz = pos.z - cz
+      if (pos.y > minY && dx * dx + dz * dz < r2) n++
+    })
+    return n
+  }
+
   tick(dt: number) {
     this.players.forEach(p => {
       const pos = p.mesh.position

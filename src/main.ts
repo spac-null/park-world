@@ -20,7 +20,8 @@ import { DayNightCycle } from './world/DayNightCycle'
 import { SpireReward } from './world/SpireReward'
 import { GemManager, GEM_TOTAL } from './world/GemManager'
 import { EggManager } from './weapons/EggManager'
-import { CAMERA, PHYSICS } from './config'
+import { RocketManager } from './weapons/RocketManager'
+import { CAMERA, PHYSICS, WORLD } from './config'
 
 async function main() {
   const myName = await askName()
@@ -184,13 +185,14 @@ async function main() {
   // Network
   const net = new WebSocketClient()
 
-  // Eggs
+  // Weapons
   const eggManager = new EggManager(scene, net)
+  const rocketManager = new RocketManager(scene, net)
   let myColor = '#88aaff'
 
   net.on('welcome', (msg: any) => {
     if (msg.color) myColor = msg.color
-    if (msg.id) eggManager.setMyId(msg.id)
+    if (msg.id) { eggManager.setMyId(msg.id); rocketManager.setMyId(msg.id) }
     if (msg.players) {
       for (const p of msg.players) {
         remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')
@@ -222,6 +224,10 @@ async function main() {
 
   net.on('egg', (msg: any) => {
     eggManager.addRemote(msg.x, msg.y, msg.z, msg.vx, msg.vy, msg.vz, msg.fromId)
+  })
+
+  net.on('rocket', (msg: any) => {
+    rocketManager.addRemote(msg.x, msg.y, msg.z, msg.vx, msg.vy, msg.vz, msg.fromId)
   })
 
   net.on('gem', (_msg: any) => {
@@ -271,9 +277,12 @@ async function main() {
       ? { pitchUp:false, pitchDown:false, bankLeft:false, bankRight:false, flap:false, egg:false, rocket:false, chat:false, joyX:0, joyY:0 }
       : input.get()
 
-    // Egg fire
+    // Weapon fire
     if (inp.egg && !chatInput.active) {
       eggManager.fire(flight.position.x, flight.position.y, flight.position.z, flight.yaw, flight.pitch)
+    }
+    if (inp.rocket && !chatInput.active) {
+      rocketManager.fire(flight.position.x, flight.position.y, flight.position.z, flight.yaw, flight.pitch)
     }
 
     const camYaw = springCam.getCamYaw()
@@ -357,14 +366,20 @@ async function main() {
     // NPC flock — pass scalars, no Vector3 alloc
     npcFlock.tick(dt, flight.position.x, flight.position.y, flight.position.z, flight.yaw, now)
 
-    // Spire reward
-    spireReward.tick(dt, flight.position.x, flight.position.y, flight.position.z)
+    // Spire reward — pass how many remote players are also at the top
+    const remoteAtSpire = remotePlayers.countNear(WORLD.SPIRE_X, WORLD.SPIRE_Z, 225, WORLD.SPIRE_HEIGHT - 6)
+    spireReward.tick(dt, flight.position.x, flight.position.y, flight.position.z, remoteAtSpire)
 
     // Gems
     gemManager.tick(dt, flight.position.x, flight.position.y, flight.position.z)
 
     // Eggs — onHit triggers local tumble
     eggManager.tick(dt, flight.position.x, flight.position.y, flight.position.z, () => {
+      triggerTumble(flight)
+    })
+
+    // Rockets — AOE on terrain impact + direct hit both trigger tumble
+    rocketManager.tick(dt, flight.position.x, flight.position.y, flight.position.z, () => {
       triggerTumble(flight)
     })
 

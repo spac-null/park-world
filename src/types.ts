@@ -27,6 +27,7 @@ export type NetworkMessage =
   | { type: 'trace'; id: string; x: number; y: number; z: number; text: string; color: string; name: string }
   | { type: 'hit'; fromId: string; fromName: string }
   | { type: 'egg'; fromId: string; x: number; y: number; z: number; vx: number; vy: number; vz: number }
+  | { type: 'rocket'; fromId: string; x: number; y: number; z: number; vx: number; vy: number; vz: number }
   | { type: 'gem'; fromId: string; fromName: string; idx: number }
 
 export interface FlightState {

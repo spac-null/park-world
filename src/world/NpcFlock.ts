@@ -46,14 +46,17 @@ interface NpcBird {
   homeX: number
   homeY: number
   homeZ: number
+  perched: boolean
+  perchTimer: number
 }
 
-const SPEED      = 9
-const MAX_SPEED  = 14
-const MAX_SPEED2 = MAX_SPEED * MAX_SPEED
-const STEER      = 4.5
-const RIM        = 180
-const RIM2       = RIM * RIM
+const SPEED        = 9
+const MAX_SPEED    = 14
+const MAX_SPEED2   = MAX_SPEED * MAX_SPEED
+const STEER        = 4.5
+const RIM          = 180
+const RIM2         = RIM * RIM
+const PERCH_DIST2  = 8 * 8   // settle when this close to home XZ
 
 export class NpcFlock {
   private birds: NpcBird[] = []
@@ -77,6 +80,7 @@ export class NpcFlock {
         bobPhase: Math.random() * Math.PI * 2,
         role, side: i % 2 === 0 ? 1 : -1,
         homeX: hx, homeY, homeZ: hz,
+        perched: false, perchTimer: 0,
       })
       mesh.rotationQuaternion = new Quaternion()
     }
@@ -87,10 +91,35 @@ export class NpcFlock {
     for (let i = 0; i < this.birds.length; i++) {
       const b = this.birds[i]
 
-      // B1: home territory — if player far, target home zone instead of orbiting
       const dpx = px - b.pos.x, dpz = pz - b.pos.z
       const playerDistSq = dpx * dpx + dpz * dpz
       const nearPlayer = playerDistSq < PLAYER_ATTRACT_DIST2
+
+      // Scatter check — always fires, wakes perched birds too
+      const bpx = b.pos.x - px, bpy = b.pos.y - py, bpz = b.pos.z - pz
+      const scatterDistSq = bpx * bpx + bpy * bpy + bpz * bpz
+      if (scatterDistSq < SCATTER_DIST2 && scatterDistSq > 0.01) {
+        const inv = SCATTER_IMPULSE / Math.sqrt(scatterDistSq)
+        b.vel.x += bpx * inv
+        b.vel.y += bpy * inv + 4
+        b.vel.z += bpz * inv
+        b.perched = false
+      }
+
+      // Perched — sit still until timer runs out or player gets close
+      if (b.perched) {
+        b.perchTimer -= dt
+        if (b.perchTimer <= 0 || nearPlayer) {
+          b.perched = false
+          // Takeoff kick — scramble into the air
+          b.vel.x += (Math.random() - 0.5) * 4
+          b.vel.y += 5 + Math.random() * 2
+          b.vel.z += (Math.random() - 0.5) * 4
+        } else {
+          this.syncMesh(b, dt, px, py, pz)
+          continue
+        }
+      }
 
       if (nearPlayer) {
         this.getTarget(b, i, t, px, py, pz, playerYaw)
@@ -98,20 +127,24 @@ export class NpcFlock {
         this._tx = b.homeX
         this._ty = b.homeY
         this._tz = b.homeZ
+
+        // Close enough to home — maybe perch
+        const dhx = b.homeX - b.pos.x, dhz = b.homeZ - b.pos.z
+        if (dhx * dhx + dhz * dhz < PERCH_DIST2) {
+          const groundY = terrainY(b.homeX, b.homeZ) + 1.5
+          if (b.pos.y < groundY + 5) {
+            b.perched = true
+            b.perchTimer = 3 + Math.random() * 4   // 3–7 seconds on the ground
+            b.pos.y = groundY
+            b.vel.set(0, 0, 0)
+            this.syncMesh(b, dt, px, py, pz)
+            continue
+          }
+        }
       }
 
       this.steer(b, dt)
       this.syncMesh(b, dt, px, py, pz)
-
-      // B3: scatter when player flies through — velocity impulse away from player
-      const bpx = b.pos.x - px, bpy = b.pos.y - py, bpz = b.pos.z - pz
-      const distSq = bpx * bpx + bpy * bpy + bpz * bpz
-      if (distSq < SCATTER_DIST2 && distSq > 0.01) {
-        const inv = SCATTER_IMPULSE / Math.sqrt(distSq)
-        b.vel.x += bpx * inv
-        b.vel.y += bpy * inv + 4  // slight upward bias — birds flare up when startled
-        b.vel.z += bpz * inv
-      }
     }
   }
 

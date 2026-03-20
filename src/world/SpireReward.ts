@@ -11,11 +11,11 @@ export class SpireReward {
   private bobPhase = 0
   private triggered = false
   private alreadyReached: boolean
+  private _wasParty = false
 
   constructor(scene: Scene) {
     this.alreadyReached = !!localStorage.getItem(STORAGE_KEY)
 
-    // Pulsing ring at spire top — always visible as a goal marker
     this.ring = MeshBuilder.CreateTorus('spireRewardRing', {
       diameter: 10,
       thickness: 0.4,
@@ -29,36 +29,48 @@ export class SpireReward {
     this.mat.disableLighting = true
     this.ring.material = this.mat
 
-    // If already reached in a previous session, ring glows dimmer
     if (this.alreadyReached) this.mat.emissiveColor = new Color3(0.6, 0.5, 0.15)
   }
 
-  tick(dt: number, px: number, py: number, pz: number) {
-    // Pulse scale
-    this.bobPhase += dt * 2.2
-    const pulse = 1 + Math.sin(this.bobPhase) * 0.08
-    this.ring.scaling.setAll(pulse)
+  // remoteAtSpire: number of remote players currently at spire top
+  tick(dt: number, px: number, py: number, pz: number, remoteAtSpire = 0) {
+    const localAtTop = py > TRIGGER_Y && (px * px + pz * pz) < TRIGGER_R2
+    const party = localAtTop && remoteAtSpire > 0
 
-    // Trigger check — player at spire top for the first time this session
-    if (!this.triggered) {
-      const atTop = py > TRIGGER_Y && (px * px + pz * pz) < TRIGGER_R2
-      if (atTop) {
-        this.triggered = true
-        this.flash()
-        if (!this.alreadyReached) {
-          localStorage.setItem(STORAGE_KEY, '1')
-          this.alreadyReached = true
-        }
-        // Ring goes gold-white on first arrival
-        this.mat.emissiveColor = new Color3(1.0, 1.0, 0.6)
+    // Pulse — fast party mode when 2+ players at top together
+    const pulseRate = party ? 10 : 2.2
+    const pulseAmp  = party ? 0.15 : 0.08
+    this.bobPhase += dt * pulseRate
+    this.ring.scaling.setAll(1 + Math.sin(this.bobPhase) * pulseAmp)
+
+    // Party moment — ring goes bright warm gold, screen flashes gold
+    if (party && !this._wasParty) {
+      this.mat.emissiveColor = new Color3(1.0, 0.92, 0.3)
+      this.flash('rgba(255,230,80,0.45)')
+    } else if (!party && this.triggered) {
+      this.mat.emissiveColor = this.alreadyReached
+        ? new Color3(0.6, 0.5, 0.15)
+        : new Color3(1.0, 1.0, 0.6)
+    }
+    this._wasParty = party
+
+    // First-arrival trigger — local player reaches top for first time this session
+    if (!this.triggered && localAtTop) {
+      this.triggered = true
+      this.flash('rgba(255,255,255,0.9)')
+      if (!this.alreadyReached) {
+        localStorage.setItem(STORAGE_KEY, '1')
+        this.alreadyReached = true
       }
+      this.mat.emissiveColor = new Color3(1.0, 1.0, 0.6)
     }
   }
 
-  private flash() {
+  private flash(color: string) {
     const el = document.getElementById('flash')
     if (!el) return
+    el.style.background = color
     el.style.opacity = '1'
-    setTimeout(() => { el.style.opacity = '0' }, 80)
+    setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 120)
   }
 }
