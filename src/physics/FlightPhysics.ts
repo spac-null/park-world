@@ -137,6 +137,11 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   state.position.y += state.velocity.y * dt
   state.position.z += state.velocity.z * dt
 
+  // --- Sky ceiling soft push — air gets thin above SKY_CEILING ---
+  if (state.position.y > WORLD.SKY_CEILING) {
+    state.velocity.y -= (state.position.y - WORLD.SKY_CEILING) * 2 * dt
+  }
+
   // --- Terrain collision ---
   const ground = terrainY(state.position.x, state.position.z) + 0.4
   if (state.position.y < ground) {
