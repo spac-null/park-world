@@ -226,6 +226,18 @@ async function main() {
 
   net.connect()
 
+  const hud = document.getElementById('hud')!
+  let hudFrame = 0
+
+  function timeLabel(t: number): string {
+    if (t < 0.15 || t >= 0.85) return 'night'
+    if (t < 0.22) return 'dawn'
+    if (t < 0.35) return 'morning'
+    if (t < 0.65) return 'day'
+    if (t < 0.78) return 'afternoon'
+    return 'dusk'
+  }
+
   // Game loop
   let last = performance.now()
   engine.runRenderLoop(() => {
@@ -330,6 +342,19 @@ async function main() {
     _moveMsg.x = flight.position.x; _moveMsg.y = flight.position.y; _moveMsg.z = flight.position.z
     _moveMsg.rotY = flight.yaw; _moveMsg.speed = flight.speed
     net.sendMove(_moveMsg, now)
+
+    // HUD — throttled to every 10 frames, no 60fps DOM writes
+    if (++hudFrame % 10 === 0) {
+      const lines: string[] = []
+      if (!flight.landed && flight.speed > 2)
+        lines.push(`spd ${Math.round(flight.speed)}`)
+      if (flight.position.y > 8)
+        lines.push(`alt ${Math.floor(flight.position.y)}`)
+      lines.push(timeLabel(dayNight.getT()))
+      const gems = gemManager.getCount()
+      if (gems > 0) lines.push(`gems ${gems}/5`)
+      hud.textContent = lines.join('\n')
+    }
 
     scene.render()
   })

@@ -33,13 +33,10 @@ interface Gem {
 export class GemManager {
   private gems: Gem[] = []
   private collected: Set<number>
-  private hud: HTMLElement | null
 
   constructor(scene: Scene) {
     const stored = localStorage.getItem(STORAGE_KEY)
     this.collected = new Set(stored ? JSON.parse(stored) : [])
-    this.hud = document.getElementById('hud')
-    this.updateHud()
 
     for (let i = 0; i < GEM_SPOTS.length; i++) {
       const [gx, gz, gh, _label] = GEM_SPOTS[i]
@@ -84,17 +81,12 @@ export class GemManager {
         g.mesh.isVisible = false
         this.collected.add(g.idx)
         localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
-        this.updateHud()
         this.flash(g.idx)
       }
     }
   }
 
-  private updateHud() {
-    if (!this.hud) return
-    const n = this.collected.size
-    this.hud.textContent = n === 0 ? '' : `gems ${n}/${TOTAL}`
-  }
+  getCount() { return this.collected.size }
 
   private flash(idx: number) {
     const el = document.getElementById('flash')

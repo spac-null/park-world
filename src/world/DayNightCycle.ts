@@ -45,6 +45,8 @@ export class DayNightCycle {
     this.amb = amb
   }
 
+  getT() { return this.t }
+
   tick(dt: number) {
     this.t = (this.t + dt / DAY_NIGHT.CYCLE_DURATION) % 1
     this.apply()
