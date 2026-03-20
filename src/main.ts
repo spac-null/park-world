@@ -15,6 +15,7 @@ import { TraceManager } from './world/TraceManager'
 import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
 import { ChatInput } from './ui/ChatInput'
+import { DayNightCycle } from './world/DayNightCycle'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
@@ -42,6 +43,9 @@ async function main() {
   const amb = new HemisphericLight('amb', new Vector3(0, 1, 0), scene)
   amb.intensity = 0.7
   amb.diffuse = new Color3(0.55, 0.60, 0.65)
+
+  // Day/night cycle — starts at t=0.35 (midday)
+  const dayNight = new DayNightCycle(scene, sun, amb)
 
   // Shadow map — soft exponential, 1024px
   // N64 faked shadows with blob decals; we get real per-pixel shadows for free
@@ -292,6 +296,9 @@ async function main() {
       birdRoot.rotationQuaternion!,
     )
     birdRoot.scaling.set(squashXZ, squashY, squashXZ)
+
+    // Day/night cycle
+    dayNight.tick(dt)
 
     // Traces
     traceManager.tick(dt)
