@@ -223,6 +223,7 @@ export class WorldBuilder {
   }
 
   private buildSky() {
+    // Sky sphere — gradient texture, emissiveColor tinted by DayNightCycle
     const sky = MeshBuilder.CreateSphere('sky', {
       diameter: WORLD.RADIUS * 4.5,
       segments: 12,
@@ -230,7 +231,6 @@ export class WorldBuilder {
     }, this.scene)
     sky.isPickable = false
 
-    // Gradient texture: deep blue top → hazy light blue horizon
     const skyTex = new DynamicTexture('skyGrad', { width: 16, height: 512 }, this.scene, false)
     const ctx = skyTex.getContext()
     const grad = ctx.createLinearGradient(0, 0, 0, 512)
@@ -243,9 +243,42 @@ export class WorldBuilder {
 
     const mat = new StandardMaterial('skyMat', this.scene)
     mat.emissiveTexture = skyTex
+    mat.emissiveColor = new Color3(1, 1, 1)  // DayNightCycle drives this down at night/dawn/dusk
     mat.backFaceCulling = false
     mat.specularColor = new Color3(0, 0, 0)
     sky.material = mat
+
+    // Star sphere — inside sky, seeded random dots, alpha driven by DayNightCycle
+    const stars = MeshBuilder.CreateSphere('stars', {
+      diameter: WORLD.RADIUS * 4.3,
+      segments: 8,
+      sideOrientation: Mesh.BACKSIDE,
+    }, this.scene)
+    stars.isPickable = false
+
+    const starRand = seededRand(7)
+    const starTex = new DynamicTexture('starTex', { width: 512, height: 512 }, this.scene, false)
+    const stx = starTex.getContext()
+    stx.fillStyle = '#000000'
+    stx.fillRect(0, 0, 512, 512)
+    for (let i = 0; i < 220; i++) {
+      const sx = starRand() * 512
+      const sy = starRand() * 512
+      const sz = 0.5 + starRand() * 1.5
+      const bright = 0.5 + starRand() * 0.5
+      stx.fillStyle = `rgba(255,255,255,${bright.toFixed(2)})`
+      stx.beginPath()
+      stx.arc(sx, sy, sz, 0, Math.PI * 2)
+      stx.fill()
+    }
+    starTex.update()
+
+    const starMat = new StandardMaterial('starMat', this.scene)
+    starMat.emissiveTexture = starTex
+    starMat.backFaceCulling = false
+    starMat.disableLighting = true
+    starMat.alpha = 0  // starts invisible — DayNightCycle fades in at night
+    stars.material = starMat
   }
 
   private buildTerrain() {

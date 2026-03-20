@@ -1,4 +1,4 @@
-import { Scene, DirectionalLight, HemisphericLight, Color3, Color4, Vector3 } from '@babylonjs/core'
+import { Scene, DirectionalLight, HemisphericLight, Color3, Color4, Vector3, StandardMaterial } from '@babylonjs/core'
 import { DAY_NIGHT, WORLD } from '../config'
 
 interface Keyframe {
@@ -26,11 +26,18 @@ export class DayNightCycle {
   private scene: Scene
   private sun: DirectionalLight
   private amb: HemisphericLight
-  private _sky = new Color4(0, 0, 0, 1)
-  private _fog = new Color3(0, 0, 0)
-  private _sunCol = new Color3(0, 0, 0)
-  private _ambCol = new Color3(0, 0, 0)
-  private _dir = new Vector3(0, -1, 0)
+
+  // Pre-allocated — no per-frame GC
+  private _sky       = new Color4(0, 0, 0, 1)
+  private _fog       = new Color3(0, 0, 0)
+  private _sunCol    = new Color3(0, 0, 0)
+  private _ambCol    = new Color3(0, 0, 0)
+  private _skyTint   = new Color3(0, 0, 0)  // drives sky sphere emissiveColor
+  private _dir       = new Vector3(0, -1, 0)
+
+  // Lazy-resolved material refs — null until first apply()
+  private _skyMat:  StandardMaterial | null = null
+  private _starMat: StandardMaterial | null = null
 
   constructor(scene: Scene, sun: DirectionalLight, amb: HemisphericLight) {
     this.scene = scene
@@ -45,10 +52,13 @@ export class DayNightCycle {
 
   private apply() {
     const k = this.interp(this.t)
+
     this._sky.set(k.sky[0], k.sky[1], k.sky[2], 1)
     this._fog.set(k.fog[0], k.fog[1], k.fog[2])
     this._sunCol.set(k.sun[0], k.sun[1], k.sun[2])
     this._ambCol.set(k.amb[0], k.amb[1], k.amb[2])
+    this._skyTint.set(k.sky[0], k.sky[1], k.sky[2])
+
     this.scene.clearColor = this._sky
     this.scene.fogColor   = this._fog
     this.scene.fogDensity = k.fogDensity
@@ -57,9 +67,30 @@ export class DayNightCycle {
     this.amb.diffuse      = this._ambCol
     this.amb.intensity    = k.ambIntensity
 
+    // Sky sphere: tint emissiveColor so gradient shifts with time of day
+    // Babylon multiplies emissiveColor × emissiveTexture per pixel
+    if (!this._skyMat) {
+      this._skyMat = (this.scene.getMeshByName('sky')?.material as StandardMaterial) ?? null
+    }
+    if (this._skyMat) this._skyMat.emissiveColor = this._skyTint
+
+    // Star sphere: fade in at dusk, full at night, fade out at dawn
+    if (!this._starMat) {
+      this._starMat = (this.scene.getMeshByName('stars')?.material as StandardMaterial) ?? null
+    }
+    if (this._starMat) this._starMat.alpha = this.starAlpha(this.t)
+
     const angle = this.t * Math.PI * 2
     this._dir.set(-Math.sin(angle), -(Math.abs(Math.cos(angle)) + 0.3), -Math.cos(angle))
     this.sun.direction = this._dir
+  }
+
+  // Stars: invisible during day, fade in at dusk (t≈0.78), full at night, fade out at dawn (t≈0.22)
+  private starAlpha(t: number): number {
+    if (t < 0.10 || t > 0.90) return 1
+    if (t >= 0.10 && t < 0.22) return 1 - (t - 0.10) / 0.12
+    if (t > 0.78 && t <= 0.90) return (t - 0.78) / 0.12
+    return 0
   }
 
   private interp(t: number) {
