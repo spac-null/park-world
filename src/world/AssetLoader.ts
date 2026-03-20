@@ -6,9 +6,12 @@ const load = (scene: Scene, name: string) =>
   SceneLoader.LoadAssetContainerAsync(BASE, name, scene)
 
 export interface NatureAssets {
-  trees:  AssetContainer[]   // [blocks, fat, simple, pineA, pineB]
-  rocks:  AssetContainer[]   // [largeA, largeB, largeC, tallA, tallB]
-  extras: AssetContainer[]   // [mushroomRed, mushroomGroup, stump, flowerRed, flowerPurple, grassLarge, log]
+  trees:     AssetContainer[]   // [blocks, fat, simple, pineA, pineB]
+  rocks:     AssetContainer[]   // [largeA, largeB, largeC, tallA, tallB]
+  extras:    AssetContainer[]   // [mushroomRed, mushroomGroup, stump, flowerRed, flowerPurple, grassLarge, log]
+  statues:   AssetContainer[]   // [column, obelisk]
+  deco:      AssetContainer[]   // [campfire, bushSmall, bushLarge, hangingMoss]
+  waterfall: AssetContainer[]   // [waterfallRock, waterfallTopRock]
 }
 
 export async function loadNatureAssets(scene: Scene): Promise<NatureAssets> {
@@ -16,6 +19,9 @@ export async function loadNatureAssets(scene: Scene): Promise<NatureAssets> {
     treeBlocks, treeFat, treeSimple, treePineA, treePineB,
     rockLargeA, rockLargeB, rockLargeC, rockTallA, rockTallB,
     mushroomRed, mushroomGroup, stump, flowerRed, flowerPurple, grassLarge, log,
+    statueColumn, statueObelisk,
+    campfire, bushSmall, bushLarge, hangingMoss,
+    waterfallRock, waterfallTopRock,
   ] = await Promise.all([
     load(scene, 'tree_blocks.glb'),
     load(scene, 'tree_fat.glb'),
@@ -34,12 +40,23 @@ export async function loadNatureAssets(scene: Scene): Promise<NatureAssets> {
     load(scene, 'flower_purpleA.glb'),
     load(scene, 'grass_large.glb'),
     load(scene, 'log.glb'),
+    load(scene, 'statue_column.glb'),
+    load(scene, 'statue_obelisk.glb'),
+    load(scene, 'campfire_stones.glb'),
+    load(scene, 'plant_bush.glb'),
+    load(scene, 'plant_bushLarge.glb'),
+    load(scene, 'hanging_moss.glb'),
+    load(scene, 'cliff_waterfall_rock.glb'),
+    load(scene, 'cliff_waterfallTop_rock.glb'),
   ])
 
   return {
-    trees:  [treeBlocks, treeFat, treeSimple, treePineA, treePineB],
-    rocks:  [rockLargeA, rockLargeB, rockLargeC, rockTallA, rockTallB],
-    extras: [mushroomRed, mushroomGroup, stump, flowerRed, flowerPurple, grassLarge, log],
+    trees:     [treeBlocks, treeFat, treeSimple, treePineA, treePineB],
+    rocks:     [rockLargeA, rockLargeB, rockLargeC, rockTallA, rockTallB],
+    extras:    [mushroomRed, mushroomGroup, stump, flowerRed, flowerPurple, grassLarge, log],
+    statues:   [statueColumn, statueObelisk],
+    deco:      [campfire, bushSmall, bushLarge, hangingMoss],
+    waterfall: [waterfallRock, waterfallTopRock],
   }
 }
 

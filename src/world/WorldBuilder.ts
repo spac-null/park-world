@@ -111,8 +111,59 @@ export class WorldBuilder {
         const x = cx + (randF() * 4 - 2)
         const z = cz + (randF() * 4 - 2)
         const y = terrainY(x, z)
-        place(assets.extras[isRed ? 3 : 4], x, y, z, 1.5, randF() * Math.PI * 2)
+        place(assets.extras[isRed ? 3 : 4], x, y, z, 5, randF() * Math.PI * 2)
       }
+    }
+
+    // --- Statues on Canopy pillar tops ---
+    const pillarTops = [
+      { x: 60,  z: -30, h: 25 }, { x: 90,  z: -10, h: 18 },
+      { x: 75,  z: -55, h: 30 }, { x: 110, z: -40, h: 22 },
+    ]
+    pillarTops.forEach((p, i) => {
+      const y = terrainY(p.x, p.z) + p.h
+      const asset = i % 2 === 0 ? assets.statues[1] : assets.statues[0]  // obelisk / column
+      place(asset, p.x, y, p.z, 12, i * 0.8)
+    })
+
+    // --- Campfires scattered (8 — near hollows, scrapyard, open areas) ---
+    const randC = seededRand(77)
+    for (let i = 0; i < 8; i++) {
+      const angle = randC() * Math.PI * 2
+      const r     = 25 + randC() * 120
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      const y     = terrainY(x, z)
+      place(assets.deco[0], x, y, z, 10, randC() * Math.PI * 2)
+    }
+
+    // --- Bushes as ground cover (50) ---
+    const randSh = seededRand(66)
+    for (let i = 0; i < 50; i++) {
+      const angle = randSh() * Math.PI * 2
+      const r     = 10 + randSh() * 160
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 10) continue
+      const y     = terrainY(x, z)
+      const big   = randSh() > 0.6
+      place(big ? assets.deco[2] : assets.deco[1], x, y, z, 10 + randSh() * 8, randSh() * Math.PI * 2)
+    }
+
+    // --- Hanging moss at cave entrance ---
+    const mx = MOUNTAIN_X, mz = MOUNTAIN_Z
+    const caveY = terrainY(mx, mz - 14) + 12
+    for (let i = 0; i < 5; i++) {
+      place(assets.deco[3], mx + (i - 2) * 3, caveY, mz - 13, 8, i * 0.4)
+    }
+
+    // --- Waterfall assets replacing procedural slabs ---
+    const peakY = terrainY(mx, mz)
+    for (let s = 0; s < 4; s++) {
+      const t  = s / 3
+      const wy = peakY - 8 - t * (peakY - 8 - caveY + 2)
+      const asset = t < 0.5 ? assets.waterfall[1] : assets.waterfall[0]
+      place(asset, mx, wy, mz + 10 + t * 1.5, 10, 0)
     }
   }
 
