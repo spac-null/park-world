@@ -15,10 +15,13 @@ import { TraceManager } from './world/TraceManager'
 import { RemotePlayers } from './network/RemotePlayers'
 import { WebSocketClient } from './network/WebSocketClient'
 import { ChatInput } from './ui/ChatInput'
+import { askName } from './ui/NameInput'
 import { DayNightCycle } from './world/DayNightCycle'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
+  const myName = await askName()
+
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
 
   const engine = new Engine(canvas, true, {
@@ -158,7 +161,7 @@ async function main() {
   birdRoot.rotationQuaternion = new Quaternion()
 
   // Reusable network move object — avoids alloc when below send interval
-  const _moveMsg = { x: 0, y: 0, z: 0, rotY: 0, name: 'player', role: 'bird' as const, speed: 0 }
+  const _moveMsg = { x: 0, y: 0, z: 0, rotY: 0, name: myName, role: 'bird' as const, speed: 0 }
 
   // Remote players + traces
   const remotePlayers = new RemotePlayers(scene)
@@ -167,11 +170,9 @@ async function main() {
   // Network
   const net = new WebSocketClient()
   let myColor = '#88aaff'
-  let myName  = 'bird'
 
   net.on('welcome', (msg: any) => {
     if (msg.color) myColor = msg.color
-    if (msg.name)  myName  = msg.name
     if (msg.players) {
       for (const p of msg.players) {
         remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')

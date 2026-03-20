@@ -75,6 +75,44 @@
         width: 100%;
       }
       #chat-input::placeholder { color: rgba(255,255,255,0.3); }
+      #name-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85);
+        align-items: center; justify-content: center;
+        z-index: 200;
+      }
+      #name-card {
+        display: flex; flex-direction: column; gap: 16px;
+        background: rgba(20,20,30,0.95);
+        border: 2px solid rgba(255,255,255,0.22);
+        border-radius: 16px;
+        padding: 32px 36px 28px;
+        min-width: 280px;
+      }
+      #name-title {
+        color: rgba(255,255,255,0.7);
+        font-family: monospace; font-size: 13px;
+        letter-spacing: 0.08em; text-transform: lowercase;
+      }
+      #name-input {
+        background: transparent; border: none;
+        border-bottom: 2px solid rgba(255,255,255,0.35);
+        outline: none; color: #fff; caret-color: #fff;
+        font-family: monospace; font-size: 28px;
+        padding-bottom: 6px; width: 100%;
+      }
+      #name-input::placeholder { color: rgba(255,255,255,0.2); }
+      #name-submit {
+        align-self: flex-end;
+        background: rgba(255,255,255,0.1);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 8px;
+        color: #fff; font-family: monospace; font-size: 14px;
+        padding: 8px 20px; cursor: pointer;
+        transition: background 0.15s;
+      }
+      #name-submit:hover { background: rgba(255,255,255,0.2); }
     </style>
   </head>
   <body>
@@ -84,6 +122,13 @@
     <div id="btn-egg">EGG</div>
     <div id="btn-rocket">🚀</div>
     <div id="hud"></div>
+    <div id="name-overlay">
+      <div id="name-card">
+        <div id="name-title">what's your name?</div>
+        <input id="name-input" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="bird" />
+        <button id="name-submit">fly →</button>
+      </div>
+    </div>
     <div id="chat-bar">
       <div id="chat-hint">T to chat · Enter to send · Esc to cancel</div>
       <input id="chat-input" type="text" maxlength="60" autocomplete="off" placeholder="say something..." />
