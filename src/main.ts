@@ -1,7 +1,7 @@
 import {
   Engine, Scene, Vector3, HemisphericLight, DirectionalLight,
   Color3, Color4, Quaternion, ParticleSystem, DynamicTexture,
-  ShadowGenerator,
+  ShadowGenerator, ColorCurves,
 } from '@babylonjs/core'
 import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
 import { InputManager } from './engine/InputManager'
@@ -26,6 +26,8 @@ import { CAMERA, PHYSICS, WORLD } from './config'
 
 async function main() {
   const glideMode = new URLSearchParams(window.location.search).has('glide')
+  // Glide mode always starts fresh — child gets all beams every session
+  if (glideMode) localStorage.removeItem('park-world-gems')
   const myName = await askName()
 
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
@@ -45,12 +47,12 @@ async function main() {
 
   // Lights
   const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.5), scene)
-  sun.intensity = 1.2
-  sun.diffuse = new Color3(1, 0.98, 0.90)
-  sun.position = new Vector3(100, 200, 100)  // needed for shadow frustum
+  sun.intensity = 1.4
+  sun.diffuse = new Color3(1, 0.94, 0.78)   // warm golden sun
+  sun.position = new Vector3(100, 200, 100)
   const amb = new HemisphericLight('amb', new Vector3(0, 1, 0), scene)
-  amb.intensity = 0.7
-  amb.diffuse = new Color3(0.55, 0.60, 0.65)
+  amb.intensity = 0.55
+  amb.diffuse = new Color3(0.78, 0.70, 0.52)  // warm golden ambient, not cold gray
 
   // Day/night cycle — starts at t=0.35 (midday)
   const dayNight = new DayNightCycle(scene, sun, amb)
@@ -99,10 +101,14 @@ async function main() {
   pipeline.bloomKernel = 48
   pipeline.bloomScale = 0.5
   pipeline.imageProcessingEnabled = true
-  pipeline.imageProcessing.contrast = 1.08
-  pipeline.imageProcessing.exposure = 1.05
+  pipeline.imageProcessing.contrast = 1.2
+  pipeline.imageProcessing.exposure = 1.1
+  pipeline.imageProcessing.colorCurvesEnabled = true
+  const curves = new ColorCurves()
+  curves.globalSaturation = 28   // punch up colors — world should feel vivid
+  pipeline.imageProcessing.colorCurves = curves
   pipeline.imageProcessing.vignetteEnabled = true
-  pipeline.imageProcessing.vignetteWeight = 2.0
+  pipeline.imageProcessing.vignetteWeight = 1.5
   pipeline.imageProcessing.vignetteCameraFov = 0.6
 
   // Input
