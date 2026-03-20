@@ -162,8 +162,12 @@ async function main() {
 
   // Gems — 5 hidden collectibles, localStorage persistence
   const gemManager = new GemManager(scene)
+  let gemMessage = ''
+  let gemMessageTimer = 0
   gemManager.onCollect = (idx) => {
     net.send({ type: 'gem', fromId: '', fromName: myName, idx })
+    gemMessage = `you got gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
+    gemMessageTimer = 3
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
@@ -281,6 +285,7 @@ async function main() {
       : input.get()
 
     if (glideMode && hintTimer > 0) hintTimer -= dt
+    if (gemMessageTimer > 0) gemMessageTimer -= dt
 
     // Glide mode — auto-flap so daughter only needs to steer
     if (glideMode) {
@@ -415,7 +420,8 @@ async function main() {
       lines.push(timeLabel(dayNight.getT()))
       const gems = gemManager.getCount()
       if (gems > 0) lines.push(`gems ${gems}/${GEM_TOTAL}`)
-      if (glideMode && hintTimer > 0) lines.push('fly to the glowing beams!')
+      if (gemMessageTimer > 0) lines.push(gemMessage)
+      else if (glideMode && hintTimer > 0) lines.push('fly to the glowing beams!')
       if (glideMode) lines.push('glide')
       hud.textContent = lines.join('\n')
     }

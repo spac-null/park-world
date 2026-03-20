@@ -1,17 +1,18 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { terrainY } from './WorldBuilder'
 
-const STORAGE_KEY   = 'park-world-gems'
-const COLLECT_DIST2 = 8 * 8   // very generous — fly near the pillar and it pops
+const STORAGE_KEY  = 'park-world-gems'
+const BEAM_RADIUS  = 3.2   // fly within this horizontal distance of beam center = grab
+const BEAM_HEIGHT  = 80
 export const GEM_TOTAL = 5
 
-// [x, z, height above terrain, label]
-const GEM_SPOTS: [number, number, number, string][] = [
-  [   2,    2, 62, 'spire'],        // spire top — above reward ring
-  [   0,  -73, 18, 'mountain'],     // cave exit (north face, behind waterfall)
-  [ 110,  -40, 28, 'canopy'],       // highest canopy pillar top
-  [   0,  -88, 58, 'summit'],       // mountain peak
-  [ -90,   10,  8, 'scrapyard'],    // inside scrapyard, low and hidden
+// [x, z, height above terrain]
+const GEM_SPOTS: [number, number, number][] = [
+  [   2,    2, 62],   // spire top
+  [   0,  -73, 18],   // mountain cave exit
+  [ 110,  -40, 28],   // canopy pillar top
+  [   0,  -88, 58],   // mountain summit
+  [ -90,   10,  8],   // scrapyard
 ]
 
 const GEM_COLORS = [
@@ -23,12 +24,14 @@ const GEM_COLORS = [
 ]
 
 interface Gem {
-  mesh: ReturnType<typeof MeshBuilder.CreateSphere>
   beam: ReturnType<typeof MeshBuilder.CreateCylinder>
-  mat: StandardMaterial
+  beamMat: StandardMaterial
   collected: boolean
   phase: number
   idx: number
+  gx: number
+  gz: number
+  beamBottom: number   // terrain y at this spot — beam runs from here upward
 }
 
 export class GemManager {
@@ -41,38 +44,27 @@ export class GemManager {
     this.collected = new Set(stored ? JSON.parse(stored) : [])
 
     for (let i = 0; i < GEM_SPOTS.length; i++) {
-      const [gx, gz, gh, _label] = GEM_SPOTS[i]
-      const gy = terrainY(gx, gz) + gh
+      const [gx, gz, gh] = GEM_SPOTS[i]
+      const beamBottom = terrainY(gx, gz) + gh
       const color = GEM_COLORS[i % GEM_COLORS.length]
 
-      // Gem — bigger so it's visible from a distance
-      const mesh = MeshBuilder.CreateSphere(`gem${i}`, { diameter: 1.8, segments: 6 }, scene)
-      mesh.position.set(gx, gy, gz)
-      mesh.isPickable = false
-
-      const mat = new StandardMaterial(`gemMat${i}`, scene)
-      mat.emissiveColor = color.clone()
-      mat.disableLighting = true
-      mesh.material = mat
-
-      // Beacon pillar — wide glowing column, fly into it to collect
+      // Beam — the entire column is the collectible, fly through it at any height
       const beam = MeshBuilder.CreateCylinder(`gemBeam${i}`, {
-        height: 80, diameter: 5, tessellation: 8,
+        height: BEAM_HEIGHT, diameter: BEAM_RADIUS * 2, tessellation: 8,
       }, scene)
-      beam.position.set(gx, gy + 40, gz)
+      beam.position.set(gx, beamBottom + BEAM_HEIGHT / 2, gz)
       beam.isPickable = false
 
       const beamMat = new StandardMaterial(`gemBeamMat${i}`, scene)
       beamMat.emissiveColor = color.clone()
       beamMat.disableLighting = true
-      beamMat.alpha = 0.35
+      beamMat.alpha = 0.4
       beamMat.backFaceCulling = false
       beam.material = beamMat
 
-      const collected = this.collected.has(i)
-      if (collected) { mesh.isVisible = false; beam.isVisible = false }
+      if (this.collected.has(i)) beam.isVisible = false
 
-      this.gems.push({ mesh, beam, mat, collected, phase: i * 1.3, idx: i })
+      this.gems.push({ beam, beamMat, collected: this.collected.has(i), phase: i * 1.3, idx: i, gx, gz, beamBottom })
     }
   }
 
@@ -80,45 +72,53 @@ export class GemManager {
     for (const g of this.gems) {
       if (g.collected) continue
 
-      // Rotate + float
-      g.phase += dt * 1.8
-      g.mesh.rotation.y = g.phase
-      g.mesh.position.y += Math.sin(g.phase * 0.7) * 0.008
+      g.phase += dt * 1.4
 
-      // Pulse emissive on gem + scale pulse on beam
-      const pulse = 0.7 + Math.sin(g.phase * 1.4) * 0.3
+      // Beam breathes — scale in XZ so it feels alive and reachable
+      const breathe = 1 + Math.sin(g.phase * 0.9) * 0.12
+      g.beam.scaling.x = breathe
+      g.beam.scaling.z = breathe
+
+      // Pulse brightness
+      const pulse = 0.65 + Math.sin(g.phase * 1.4) * 0.35
       const base = GEM_COLORS[g.idx % GEM_COLORS.length]
-      g.mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse)
-      const beamPulse = 1 + Math.sin(g.phase * 0.8) * 0.15
-      g.beam.scaling.x = beamPulse
-      g.beam.scaling.z = beamPulse
+      g.beamMat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse)
 
-      // Collect
-      const dx = px - g.mesh.position.x
-      const dy = py - g.mesh.position.y
-      const dz = pz - g.mesh.position.z
-      if (dx * dx + dy * dy + dz * dz < COLLECT_DIST2) {
-        g.collected = true
-        g.mesh.isVisible = false
-        g.beam.isVisible = false
-        this.collected.add(g.idx)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
-        this.flash(g.idx)
-        this.onCollect?.(g.idx)
+      // Cylindrical collect — horizontal distance from beam center only
+      // Any height inside the beam counts — just fly through it
+      const dx = px - g.gx
+      const dz = pz - g.gz
+      const horizDist2 = dx * dx + dz * dz
+      const beamTop = g.beamBottom + BEAM_HEIGHT + 5
+      if (horizDist2 < BEAM_RADIUS * BEAM_RADIUS && py >= g.beamBottom - 5 && py <= beamTop) {
+        this.collect(g)
       }
     }
   }
 
+  private collect(g: Gem) {
+    g.collected = true
+    // Flash beam bright white before vanishing
+    g.beamMat.emissiveColor = new Color3(1, 1, 1)
+    setTimeout(() => { g.beam.isVisible = false }, 150)
+
+    this.collected.add(g.idx)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
+    this.bigFlash(g.idx)
+    this.onCollect?.(g.idx)
+  }
+
   getCount() { return this.collected.size }
 
-  private flash(idx: number) {
+  private bigFlash(idx: number) {
     const el = document.getElementById('flash')
     if (!el) return
-    el.style.background = `#${GEM_COLORS[idx % GEM_COLORS.length].toHexString()}`
-    el.style.opacity = '0.6'
-    setTimeout(() => {
-      el.style.opacity = '0'
-      el.style.background = '#fff'
-    }, 60)
+    const hex = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
+    el.style.background = `#${hex}`
+    el.style.opacity = '0.7'
+    // Fade out slowly — 600ms so the child notices
+    setTimeout(() => { el.style.opacity = '0.4' }, 100)
+    setTimeout(() => { el.style.opacity = '0.1' }, 300)
+    setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 600)
   }
 }
