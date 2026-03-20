@@ -1,9 +1,21 @@
-import { Scene, SceneLoader, AssetContainer } from '@babylonjs/core'
+import { Scene, SceneLoader, AssetContainer, PBRMaterial, Color3 } from '@babylonjs/core'
 import '@babylonjs/loaders/glTF'
 
 const BASE = `${import.meta.env.BASE_URL}assets/kenney/`
 const load = (scene: Scene, name: string) =>
   SceneLoader.LoadAssetContainerAsync(BASE, name, scene)
+
+// PBR materials in Kenney GLBs have ambientColor=(0,0,0) by default.
+// scene.ambientColor × material.ambientColor = 0 → dark shadows regardless of lights.
+// Setting ambientColor=white lets scene.ambientColor (warm gold) fill the shadows.
+function boostMaterials(container: AssetContainer) {
+  for (const mat of container.materials) {
+    if (mat instanceof PBRMaterial) {
+      mat.ambientColor = Color3.White()
+      mat.directIntensity = 1.4   // punchier direct light — vivid colors in sun
+    }
+  }
+}
 
 export interface NatureAssets {
   trees:     AssetContainer[]   // [blocks, fat, simple, pineA, pineB]
@@ -60,6 +72,16 @@ export async function loadNatureAssets(scene: Scene): Promise<NatureAssets> {
     load(scene, 'path_stoneCircle.glb'),
     load(scene, 'canoe.glb'),
   ])
+
+  const all = [
+    treeBlocks, treeFat, treeSimple, treePineA, treePineB,
+    rockLargeA, rockLargeB, rockLargeC, rockTallA, rockTallB,
+    mushroomRed, mushroomGroup, mushroomTall, stump, flowerRed, flowerPurple, grassLarge, log,
+    statueColumn, statueObelisk, statueHead, statueRing,
+    campfire, bushSmall, bushLarge, hangingMoss, tent, logStack, logStackLarge,
+    waterfallRock, waterfallTopRock, pathStone, pathStoneCircle, canoe,
+  ]
+  for (const c of all) boostMaterials(c)
 
   return {
     trees:     [treeBlocks, treeFat, treeSimple, treePineA, treePineB],

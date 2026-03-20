@@ -40,10 +40,15 @@ async function main() {
   engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio * 0.75, 1.5))
 
   const scene = new Scene(engine)
-  scene.clearColor = new Color4(0.54, 0.74, 0.91, 1)  // matches sky horizon
-  scene.fogMode = Scene.FOGMODE_EXP2
-  scene.fogDensity = 0.005
+  scene.clearColor = new Color4(0.54, 0.74, 0.91, 1)
+  // Linear fog — zero fog inside 130 units, fully fogged at 200
+  // EXP2 grays out nearby objects; LINEAR keeps them vivid
+  scene.fogMode = Scene.FOGMODE_LINEAR
+  scene.fogStart = 130
+  scene.fogEnd = 200
   scene.fogColor = new Color3(0.54, 0.74, 0.91)
+  // Warm fill for PBR materials (Kenney GLBs) — multiplied with mat.ambientColor
+  scene.ambientColor = new Color3(0.82, 0.75, 0.60)
 
   // Lights
   const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.5), scene)
