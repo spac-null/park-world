@@ -14,6 +14,24 @@ const COLORS = [
   new Color3(0.88, 0.35, 0.50),
 ]
 
+// Home positions [x, z, height above terrain] — one per bird, spread across zones
+const HOMES: [number, number, number][] = [
+  [-40, -75, 14],   // 0 sideline — Hollows N
+  [ 75, -40, 14],   // 1 sideline — Canopy E
+  [  8, -70, 16],   // 2 scout    — Mountain approach
+  [-75,  35, 12],   // 3 scout    — ScrapYard W
+  [ 20,  20, 12],   // 4 flock    — open center NE
+  [-20, -60, 14],   // 5 flock    — Hollows edge
+  [ 95, -25, 16],   // 6 flock    — Canopy far pillar
+  [  0, -35, 12],   // 7 flock    — center-N drift
+]
+
+const PLAYER_ATTRACT_DIST  = 75   // beyond this, birds drift home
+const PLAYER_ATTRACT_DIST2 = PLAYER_ATTRACT_DIST * PLAYER_ATTRACT_DIST
+const SCATTER_DIST         = 8    // player this close triggers scatter impulse
+const SCATTER_DIST2        = SCATTER_DIST * SCATTER_DIST
+const SCATTER_IMPULSE      = 14   // velocity kick magnitude
+
 type Role = 'sideline' | 'scout' | 'flock'
 
 interface NpcBird {
@@ -25,6 +43,9 @@ interface NpcBird {
   bobPhase: number
   role: Role
   side: number
+  homeX: number
+  homeY: number
+  homeZ: number
 }
 
 const SPEED      = 9
@@ -36,7 +57,6 @@ const RIM2       = RIM * RIM
 
 export class NpcFlock {
   private birds: NpcBird[] = []
-  // Reusable target vector — no allocation in hot path
   private _tx = 0; private _ty = 0; private _tz = 0
 
   constructor(scene: Scene, count = 8) {
@@ -47,14 +67,17 @@ export class NpcFlock {
       const role: Role = i < 2 ? 'sideline' : i < 4 ? 'scout' : 'flock'
       const mesh  = createBirdMesh(scene, COLORS[i % COLORS.length], `npc${i}`)
 
+      const [hx, hz, hh] = HOMES[i % HOMES.length]
+      const homeY = terrainY(hx, hz) + hh
+
       this.birds.push({
         pos, vel: new Vector3((Math.random() - 0.5) * 4, 0, (Math.random() - 0.5) * 4),
         facingYaw: angle, mesh,
-        childMeshes: mesh.getChildMeshes(),  // cached once — avoid per-frame alloc
+        childMeshes: mesh.getChildMeshes(),
         bobPhase: Math.random() * Math.PI * 2,
         role, side: i % 2 === 0 ? 1 : -1,
+        homeX: hx, homeY, homeZ: hz,
       })
-      // Pre-create rotation quaternion so RotationYawPitchRollToRef never allocates
       mesh.rotationQuaternion = new Quaternion()
     }
   }
@@ -63,13 +86,35 @@ export class NpcFlock {
     const t = now * 0.001
     for (let i = 0; i < this.birds.length; i++) {
       const b = this.birds[i]
-      this.getTarget(b, i, t, px, py, pz, playerYaw)
+
+      // B1: home territory — if player far, target home zone instead of orbiting
+      const dpx = px - b.pos.x, dpz = pz - b.pos.z
+      const playerDistSq = dpx * dpx + dpz * dpz
+      const nearPlayer = playerDistSq < PLAYER_ATTRACT_DIST2
+
+      if (nearPlayer) {
+        this.getTarget(b, i, t, px, py, pz, playerYaw)
+      } else {
+        this._tx = b.homeX
+        this._ty = b.homeY
+        this._tz = b.homeZ
+      }
+
       this.steer(b, dt)
       this.syncMesh(b, dt, px, py, pz)
+
+      // B3: scatter when player flies through — velocity impulse away from player
+      const bpx = b.pos.x - px, bpy = b.pos.y - py, bpz = b.pos.z - pz
+      const distSq = bpx * bpx + bpy * bpy + bpz * bpz
+      if (distSq < SCATTER_DIST2 && distSq > 0.01) {
+        const inv = SCATTER_IMPULSE / Math.sqrt(distSq)
+        b.vel.x += bpx * inv
+        b.vel.y += bpy * inv + 4  // slight upward bias — birds flare up when startled
+        b.vel.z += bpz * inv
+      }
     }
   }
 
-  // Writes target into this._tx/y/z — zero allocation
   private getTarget(b: NpcBird, idx: number, t: number, px: number, py: number, pz: number, pYaw: number) {
     const fwdX = Math.sin(pYaw), fwdZ = Math.cos(pYaw)
     const rgtX = Math.cos(pYaw), rgtZ = -Math.sin(pYaw)
@@ -96,7 +141,6 @@ export class NpcFlock {
     this._tz = pz + Math.sin(orbitAngle) * orbitR
   }
 
-  // Zero Vector3 allocations — pure scalar math
   private steer(b: NpcBird, dt: number) {
     const dx = this._tx - b.pos.x
     const dy = this._ty - b.pos.y
@@ -117,28 +161,23 @@ export class NpcFlock {
       }
     }
 
-    // Gravity + lift
     b.vel.y -= PHYSICS.GRAVITY * 0.55 * dt
     const hspd = Math.sqrt(b.vel.x * b.vel.x + b.vel.z * b.vel.z)
     b.vel.y += Math.min(hspd / 10, 1.2) * PHYSICS.GRAVITY * 0.52 * dt
 
-    // Drag
     const dh = 1 - 0.4 * dt, dv = 1 - 0.15 * dt
     b.vel.x *= dh; b.vel.z *= dh; b.vel.y *= dv
 
-    // Speed cap — use squared distance to avoid sqrt in common case
     const spdSq = b.vel.x * b.vel.x + b.vel.y * b.vel.y + b.vel.z * b.vel.z
     if (spdSq > MAX_SPEED2) {
       const s = MAX_SPEED / Math.sqrt(spdSq)
       b.vel.x *= s; b.vel.y *= s; b.vel.z *= s
     }
 
-    // Integrate — no .scale(dt) alloc
     b.pos.x += b.vel.x * dt
     b.pos.y += b.vel.y * dt
     b.pos.z += b.vel.z * dt
 
-    // Terrain + rim — skip sqrt until actually needed
     const floor = terrainY(b.pos.x, b.pos.z) + 2
     if (b.pos.y < floor) { b.pos.y = floor; b.vel.y = Math.abs(b.vel.y) * 0.4 }
 
@@ -175,7 +214,6 @@ export class NpcFlock {
     const bob = Math.sin(b.bobPhase) * Math.min(spd / 10, 1) * 0.15
 
     b.mesh.position.set(b.pos.x, b.pos.y + bob, b.pos.z)
-    // RotationYawPitchRollToRef — writes into existing quaternion, no allocation
     Quaternion.RotationYawPitchRollToRef(b.facingYaw, pitch, bank, b.mesh.rotationQuaternion!)
   }
 
