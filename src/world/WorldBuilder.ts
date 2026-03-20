@@ -165,6 +165,61 @@ export class WorldBuilder {
       const asset = t < 0.5 ? assets.waterfall[1] : assets.waterfall[0]
       place(asset, mx, wy, mz + 10 + t * 1.5, 10, 0)
     }
+
+    // --- Tents near campfires (4) ---
+    const randT = seededRand(88)
+    for (let i = 0; i < 4; i++) {
+      const angle = randT() * Math.PI * 2
+      const r     = 30 + randT() * 100
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      const y     = terrainY(x, z)
+      place(assets.deco[4], x, y, z, 14, randT() * Math.PI * 2)
+    }
+
+    // --- Log stacks in ScrapYard (west) ---
+    const scrapPositions = [
+      { x: -62, z: 28 }, { x: -88, z: 14 }, { x: -72, z: 58 },
+    ]
+    scrapPositions.forEach((p, i) => {
+      const y = terrainY(p.x, p.z)
+      place(i % 2 === 0 ? assets.deco[6] : assets.deco[5], p.x, y, p.z, 12, i * 1.1)
+    })
+
+    // --- Stone path to Spire base (ring of path tiles) ---
+    const spireY = terrainY(0, 0)
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2
+      const pr = 12
+      const px = Math.cos(a) * pr
+      const pz = Math.sin(a) * pr
+      place(assets.path[0], px, spireY, pz, 8, a)
+    }
+    // Stone circle at Spire base center
+    place(assets.path[1], 0, spireY, 0, 12, 0)
+
+    // --- Canoe near waterfall base ---
+    place(assets.path[2], mx + 4, terrainY(mx + 4, mz + 18), mz + 18, 10, 0.4)
+
+    // --- Statue head — hidden Easter egg on Spire top ring ---
+    place(assets.statues[2], 2, 57, 2, 8, 0.7)
+
+    // --- Statue rings replacing Spire torus rings ---
+    ;[15, 35, 55].forEach((h, i) => {
+      place(assets.statues[3], 0, h, 0, 18, i * 0.5)
+    })
+
+    // --- Tall mushrooms mixed in with extras ---
+    const randM = seededRand(44)
+    for (let i = 0; i < 20; i++) {
+      const angle = randM() * Math.PI * 2
+      const r     = 15 + randM() * 140
+      const x     = Math.cos(angle) * r
+      const z     = Math.sin(angle) * r
+      if (Math.sqrt(x*x + z*z) < 10) continue
+      const y = terrainY(x, z)
+      place(assets.extras[2], x, y, z, 10 + randM() * 6, randM() * Math.PI * 2)
+    }
   }
 
   private buildSky() {
