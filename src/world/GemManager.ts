@@ -2,20 +2,20 @@ import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { terrainY } from './WorldBuilder'
 
 const STORAGE_KEY  = 'park-world-gems'
-const BEAM_RADIUS  = 3.2   // fly within this horizontal distance of beam center = grab
-const BEAM_HEIGHT  = 80
+const BEAM_RADIUS  = 3.2
+const BEAM_HEIGHT  = 100
 export const GEM_TOTAL = 5
 
-// [x, z, height above terrain]
-const GEM_SPOTS: [number, number, number][] = [
-  [   2,    2, 62],   // spire top
-  [   0,  -73, 18],   // mountain cave exit
-  [ 110,  -40, 28],   // canopy pillar top
-  [   0,  -88, 58],   // mountain summit
-  [ -90,   10,  8],   // scrapyard
+// [x, z, label] — beam always rises from ground level, visible from anywhere
+const GEM_SPOTS: [number, number, string][] = [
+  [   2,    2, 'spire'],
+  [   0,  -73, 'mountain'],
+  [ 110,  -40, 'canopy'],
+  [   0,  -88, 'summit'],
+  [ -90,   10, 'scrapyard'],
 ]
 
-const GEM_COLORS = [
+export const GEM_COLORS = [
   new Color3(1.0, 0.9, 0.1),   // gold
   new Color3(0.2, 0.9, 1.0),   // cyan
   new Color3(0.8, 0.2, 1.0),   // purple
@@ -31,7 +31,7 @@ interface Gem {
   idx: number
   gx: number
   gz: number
-  beamBottom: number   // terrain y at this spot — beam runs from here upward
+  groundY: number   // terrain at this spot — beam rises from here
 }
 
 export class GemManager {
@@ -44,15 +44,15 @@ export class GemManager {
     this.collected = new Set(stored ? JSON.parse(stored) : [])
 
     for (let i = 0; i < GEM_SPOTS.length; i++) {
-      const [gx, gz, gh] = GEM_SPOTS[i]
-      const beamBottom = terrainY(gx, gz) + gh
+      const [gx, gz] = GEM_SPOTS[i]
+      const groundY = terrainY(gx, gz)   // always start beam at terrain
       const color = GEM_COLORS[i % GEM_COLORS.length]
 
-      // Beam — the entire column is the collectible, fly through it at any height
+      // Beam rises from ground — visible from across the whole map
       const beam = MeshBuilder.CreateCylinder(`gemBeam${i}`, {
         height: BEAM_HEIGHT, diameter: BEAM_RADIUS * 2, tessellation: 8,
       }, scene)
-      beam.position.set(gx, beamBottom + BEAM_HEIGHT / 2, gz)
+      beam.position.set(gx, groundY + BEAM_HEIGHT / 2, gz)
       beam.isPickable = false
 
       const beamMat = new StandardMaterial(`gemBeamMat${i}`, scene)
@@ -64,7 +64,7 @@ export class GemManager {
 
       if (this.collected.has(i)) beam.isVisible = false
 
-      this.gems.push({ beam, beamMat, collected: this.collected.has(i), phase: i * 1.3, idx: i, gx, gz, beamBottom })
+      this.gems.push({ beam, beamMat, collected: this.collected.has(i), phase: i * 1.3, idx: i, gx, gz, groundY })
     }
   }
 
@@ -74,7 +74,7 @@ export class GemManager {
 
       g.phase += dt * 1.4
 
-      // Beam breathes — scale in XZ so it feels alive and reachable
+      // Beam breathes
       const breathe = 1 + Math.sin(g.phase * 0.9) * 0.12
       g.beam.scaling.x = breathe
       g.beam.scaling.z = breathe
@@ -84,13 +84,11 @@ export class GemManager {
       const base = GEM_COLORS[g.idx % GEM_COLORS.length]
       g.beamMat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse)
 
-      // Cylindrical collect — horizontal distance from beam center only
-      // Any height inside the beam counts — just fly through it
+      // Cylindrical collect — fly through the beam at any height
       const dx = px - g.gx
       const dz = pz - g.gz
       const horizDist2 = dx * dx + dz * dz
-      const beamTop = g.beamBottom + BEAM_HEIGHT + 5
-      if (horizDist2 < BEAM_RADIUS * BEAM_RADIUS && py >= g.beamBottom - 5 && py <= beamTop) {
+      if (horizDist2 < BEAM_RADIUS * BEAM_RADIUS && py >= g.groundY - 5 && py <= g.groundY + BEAM_HEIGHT + 5) {
         this.collect(g)
       }
     }
@@ -98,27 +96,12 @@ export class GemManager {
 
   private collect(g: Gem) {
     g.collected = true
-    // Flash beam bright white before vanishing
     g.beamMat.emissiveColor = new Color3(1, 1, 1)
-    setTimeout(() => { g.beam.isVisible = false }, 150)
-
+    setTimeout(() => { g.beam.isVisible = false }, 200)
     this.collected.add(g.idx)
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
-    this.bigFlash(g.idx)
     this.onCollect?.(g.idx)
   }
 
   getCount() { return this.collected.size }
-
-  private bigFlash(idx: number) {
-    const el = document.getElementById('flash')
-    if (!el) return
-    const hex = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
-    el.style.background = `#${hex}`
-    el.style.opacity = '0.7'
-    // Fade out slowly — 600ms so the child notices
-    setTimeout(() => { el.style.opacity = '0.4' }, 100)
-    setTimeout(() => { el.style.opacity = '0.1' }, 300)
-    setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 600)
-  }
 }

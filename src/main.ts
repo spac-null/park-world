@@ -21,6 +21,7 @@ import { SpireReward } from './world/SpireReward'
 import { GemManager, GEM_TOTAL } from './world/GemManager'
 import { EggManager } from './weapons/EggManager'
 import { RocketManager } from './weapons/RocketManager'
+import { GEM_COLORS } from './world/GemManager'
 import { CAMERA, PHYSICS, WORLD } from './config'
 
 async function main() {
@@ -164,10 +165,25 @@ async function main() {
   const gemManager = new GemManager(scene)
   let gemMessage = ''
   let gemMessageTimer = 0
+  const gemPopup = document.getElementById('gem-popup')!
   gemManager.onCollect = (idx) => {
     net.send({ type: 'gem', fromId: '', fromName: myName, idx })
-    gemMessage = `you got gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
+    // HUD line
+    gemMessage = `gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
     gemMessageTimer = 3
+    // Big screen popup
+    const hex = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
+    gemPopup.textContent = `gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
+    gemPopup.style.color = `#${hex}`
+    gemPopup.style.opacity = '1'
+    gemPopup.style.display = 'block'
+    setTimeout(() => { gemPopup.style.opacity = '0' }, 1000)
+    setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 1800)
+    // Flash
+    const flash = document.getElementById('flash')!
+    flash.style.background = `#${hex}`
+    flash.style.opacity = '0.5'
+    setTimeout(() => { flash.style.opacity = '0'; flash.style.background = '#fff' }, 500)
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame

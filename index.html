@@ -121,6 +121,16 @@
         transition: background 0.15s;
       }
       #name-submit:hover { background: rgba(255,255,255,0.2); }
+      #gem-popup {
+        display: none;
+        position: fixed; top: 42%; left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: monospace; font-size: 52px; font-weight: bold;
+        text-align: center; line-height: 1.3;
+        pointer-events: none; z-index: 400;
+        transition: opacity 0.7s ease-out;
+        text-shadow: 0 0 40px currentColor, 0 0 80px currentColor;
+      }
     </style>
   </head>
   <body>
@@ -131,6 +141,7 @@
     <div id="btn-rocket">🚀</div>
     <div id="hud"></div>
     <div id="flash"></div>
+    <div id="gem-popup"></div>
     <div id="name-overlay">
       <div id="name-card">
         <div id="name-title">what's your name?</div>

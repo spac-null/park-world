@@ -18,8 +18,8 @@ const KF: Keyframe[] = [
   { t: 0.00, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
   { t: 0.70, sky:[0.32,0.58,0.90], fog:[0.32,0.58,0.90], sun:[1.00,0.96,0.82], amb:[0.55,0.60,0.65], sunIntensity:1.1, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
   { t: 0.80, sky:[0.62,0.28,0.10], fog:[0.62,0.28,0.10], sun:[1.00,0.60,0.28], amb:[0.50,0.28,0.15], sunIntensity:0.6, ambIntensity:0.5, fogDensity:0.008 },
-  { t: 0.87, sky:[0.08,0.06,0.16], fog:[0.08,0.06,0.16], sun:[0.55,0.50,0.75], amb:[0.12,0.10,0.22], sunIntensity:0.3, ambIntensity:0.35, fogDensity:WORLD.FOG_DENSITY_NIGHT },
-  { t: 0.94, sky:[0.08,0.06,0.16], fog:[0.08,0.06,0.16], sun:[0.55,0.50,0.75], amb:[0.12,0.10,0.22], sunIntensity:0.3, ambIntensity:0.35, fogDensity:WORLD.FOG_DENSITY_NIGHT },
+  { t: 0.87, sky:[0.08,0.10,0.22], fog:[0.08,0.10,0.22], sun:[0.70,0.65,0.90], amb:[0.40,0.40,0.55], sunIntensity:0.5, ambIntensity:0.65, fogDensity:WORLD.FOG_DENSITY_DAY },
+  { t: 0.94, sky:[0.08,0.10,0.22], fog:[0.08,0.10,0.22], sun:[0.70,0.65,0.90], amb:[0.40,0.40,0.55], sunIntensity:0.5, ambIntensity:0.65, fogDensity:WORLD.FOG_DENSITY_DAY },
   { t: 1.00, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
 ]
 
