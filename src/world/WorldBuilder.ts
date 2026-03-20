@@ -295,7 +295,6 @@ export class WorldBuilder {
     mat.diffuseColor = new Color3(1, 1, 1)   // white so vertex colors show through
     mat.specularColor = new Color3(0, 0, 0)
     terrain.material = mat
-    terrain.checkCollisions = true
   }
 
   private buildSpire() {
@@ -312,7 +311,6 @@ export class WorldBuilder {
     mat.diffuseColor = new Color3(0.55, 0.50, 0.44)
     mat.specularColor = new Color3(0.1, 0.1, 0.1)
     spire.material = mat
-    spire.checkCollisions = true
 
     // Three flyable rings at different heights
     const ringHeights = [15, 35, 55]
@@ -328,7 +326,6 @@ export class WorldBuilder {
       rmat.diffuseColor = new Color3(0.50, 0.44, 0.38)
       rmat.specularColor = new Color3(0, 0, 0)
       ring.material = rmat
-      ring.checkCollisions = true
     })
   }
 
@@ -356,7 +353,6 @@ export class WorldBuilder {
       mat.diffuseColor = color
       mat.specularColor = new Color3(0, 0, 0)
       seg.material = mat
-      seg.checkCollisions = true
     })
   }
 
@@ -377,7 +373,6 @@ export class WorldBuilder {
       mat.diffuseColor = new Color3(0.68, 0.60, 0.45)
       mat.specularColor = new Color3(0, 0, 0)
       arch.material = mat
-      arch.checkCollisions = true
     })
   }
 
@@ -399,7 +394,6 @@ export class WorldBuilder {
       mat.diffuseColor = new Color3(0.50, 0.55, 0.42)
       mat.specularColor = new Color3(0, 0, 0)
       pillar.material = mat
-      pillar.checkCollisions = true
     })
   }
 
@@ -423,7 +417,6 @@ export class WorldBuilder {
       mat.diffuseColor = new Color3(0.42, 0.36, 0.30)
       mat.specularColor = new Color3(0, 0, 0)
       box.material = mat
-      box.checkCollisions = true
     })
   }
 

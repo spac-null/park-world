@@ -1,6 +1,7 @@
 import { Scene, Vector3, TransformNode, Color3, Quaternion } from '@babylonjs/core'
 import { createBirdMesh } from './BirdMesh'
 import { terrainY } from './WorldBuilder'
+import { PHYSICS } from '../config'
 
 const COLORS = [
   new Color3(0.70, 0.28, 0.18),
@@ -117,9 +118,9 @@ export class NpcFlock {
     }
 
     // Gravity + lift
-    b.vel.y -= 9.8 * 0.55 * dt
+    b.vel.y -= PHYSICS.GRAVITY * 0.55 * dt
     const hspd = Math.sqrt(b.vel.x * b.vel.x + b.vel.z * b.vel.z)
-    b.vel.y += Math.min(hspd / 10, 1.2) * 9.8 * 0.52 * dt
+    b.vel.y += Math.min(hspd / 10, 1.2) * PHYSICS.GRAVITY * 0.52 * dt
 
     // Drag
     const dh = 1 - 0.4 * dt, dv = 1 - 0.15 * dt

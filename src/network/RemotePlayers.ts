@@ -20,7 +20,7 @@ export class RemotePlayers {
     const color = hexToColor3(colorHex)
     const mesh = createBirdMesh(this.scene, color, `remote_${id}`)
     const label = this.makeLabel(name, color)
-    label.parent = mesh as any
+    label.parent = mesh
     label.position.y = 2.5
     this.players.set(id, { mesh, label, tx:0, ty:20, tz:0, tRotY:0, color, name })
   }
@@ -46,10 +46,10 @@ export class RemotePlayers {
       pos.y += (p.ty - pos.y) * lr
       pos.z += (p.tz - pos.z) * lr
       // Smooth yaw
-      let dy = p.tRotY - (p.mesh.rotation as any).y
+      let dy = p.tRotY - p.mesh.rotation.y
       while (dy > Math.PI) dy -= 2 * Math.PI
       while (dy < -Math.PI) dy += 2 * Math.PI
-      ;(p.mesh.rotation as any).y += dy * lr
+      p.mesh.rotation.y += dy * lr
     })
   }
 
@@ -69,8 +69,10 @@ export class RemotePlayers {
 }
 
 function hexToColor3(hex: string): Color3 {
+  if (!hex || hex.length < 7) return new Color3(0.5, 0.5, 0.5)
   const r = parseInt(hex.slice(1,3), 16) / 255
   const g = parseInt(hex.slice(3,5), 16) / 255
   const b = parseInt(hex.slice(5,7), 16) / 255
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return new Color3(0.5, 0.5, 0.5)
   return new Color3(r, g, b)
 }

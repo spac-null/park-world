@@ -32,7 +32,6 @@ async function main() {
   engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio * 0.75, 1.5))
 
   const scene = new Scene(engine)
-  ;(window as any).__scene = scene  // debug: temporary
   scene.clearColor = new Color4(0.54, 0.74, 0.91, 1)  // matches sky horizon
   scene.fogMode = Scene.FOGMODE_EXP2
   scene.fogDensity = 0.005
@@ -102,6 +101,9 @@ async function main() {
 
   // Input
   const input = new InputManager()
+  input.bindMobileButton('btn-flap',   'flap')
+  input.bindMobileButton('btn-egg',    'egg')
+  input.bindMobileButton('btn-rocket', 'rocket')
 
   // Flight state — spawn above center
   const flight = createFlightState(0, 30, -20)

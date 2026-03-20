@@ -1,5 +1,5 @@
 import type { FlightState, InputState } from '../types'
-import { PHYSICS } from '../config'
+import { PHYSICS, WORLD } from '../config'
 
 export function createFlightState(x = 0, y = 20, z = 0): FlightState {
   return {
@@ -166,10 +166,10 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
     }
   }
 
-  // --- Spire collision (cylinder at origin, radius 7, height 60) ---
-  const spireRadius = 7
+  // --- Spire collision ---
+  const spireRadius = WORLD.SPIRE_RADIUS
   const distToSpireSq = state.position.x ** 2 + state.position.z ** 2
-  if (distToSpireSq < spireRadius * spireRadius && state.position.y < 60) {
+  if (distToSpireSq < spireRadius * spireRadius && state.position.y < WORLD.SPIRE_HEIGHT) {
     const distToSpire = Math.sqrt(distToSpireSq)
     if (distToSpire > 0) {
       const nx = state.position.x / distToSpire
@@ -184,8 +184,8 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
     }
   }
 
-  // --- Rim wall boundary (soft push back inside radius 185) ---
-  const rimLimit = 185
+  // --- Rim wall boundary ---
+  const rimLimit = WORLD.RIM_LIMIT
   const distFromCenterSq = state.position.x ** 2 + state.position.z ** 2
   if (distFromCenterSq > rimLimit * rimLimit) {
     const distFromCenter = Math.sqrt(distFromCenterSq)

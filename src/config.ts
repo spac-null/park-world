@@ -42,8 +42,10 @@ export const CAMERA = {
 export const WORLD = {
   RADIUS: 200,
   RIM_HEIGHT: 80,
+  RIM_LIMIT: 185,             // physics boundary — inside rim wall
   SKY_CEILING: 120,
   SPIRE_HEIGHT: 60,
+  SPIRE_RADIUS: 7,
   SPIRE_X: 0,
   SPIRE_Z: 0,
   FOG_DENSITY_DAY: 0.006,

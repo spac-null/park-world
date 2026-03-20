@@ -1,5 +1,7 @@
 import { Scene, MeshBuilder, StandardMaterial, DynamicTexture, Mesh } from '@babylonjs/core'
 
+let _traceId = 0
+
 const LIFETIME      = 90
 const FADE_START    = 80
 const BURST_DUR     = 0.45
@@ -39,6 +41,8 @@ export class TraceManager {
   constructor(scene: Scene) { this.scene = scene }
 
   drop(x: number, y: number, z: number, text: string, color: string, name: string) {
+    text = text.slice(0, 120)
+    const id = _traceId++
     const r = Math.min(255, (parseInt(color.slice(1, 3), 16) || 100) + 60)
     const g = Math.min(255, (parseInt(color.slice(3, 5), 16) || 160) + 60)
     const b = Math.min(255, (parseInt(color.slice(5, 7), 16) || 255) + 60)
@@ -90,11 +94,11 @@ export class TraceManager {
     ctx.restore()
 
     // Pass HTML canvas directly — Babylon uses it as-is, preserving alpha
-    const tex = new DynamicTexture(`trTex${Date.now()}`, canvas, this.scene, false)
+    const tex = new DynamicTexture(`trTex${id}`, canvas, this.scene, false)
     tex.hasAlpha = true
     tex.update()
 
-    const plane = MeshBuilder.CreatePlane(`trace${Date.now()}`, {
+    const plane = MeshBuilder.CreatePlane(`trace${id}`, {
       width: PLANE_W, height: PLANE_H,
       sideOrientation: Mesh.DOUBLESIDE,
     }, this.scene)
@@ -102,7 +106,7 @@ export class TraceManager {
     plane.position.set(x, y + 2, z)
     plane.scaling.setAll(0)
 
-    const mat = new StandardMaterial(`trMat${Date.now()}`, this.scene)
+    const mat = new StandardMaterial(`trMat${id}`, this.scene)
     mat.emissiveTexture = tex    // full brightness regardless of lighting
     mat.opacityTexture  = tex    // alpha channel → transparent outside rounded rect
     mat.disableLighting = true

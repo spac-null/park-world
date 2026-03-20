@@ -76,7 +76,7 @@ export class InputManager {
       this.state.bankRight  = this.keys.has('KeyD') || this.keys.has('ArrowRight')
       this.state.flap       = this.keys.has('Space')
       this.state.egg        = this.keys.has('KeyE')
-      this.state.rocket     = this.keys.has('KeyR')
+      this.state.rocket     = this.keys.has('KeyF')
       this.state.chat       = this.keys.has('KeyT')
     } else {
       // Map joystick to flight axes
