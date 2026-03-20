@@ -6,7 +6,7 @@ import {
 import { DefaultRenderingPipeline } from '@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline'
 import { InputManager } from './engine/InputManager'
 import { SpringCamera } from './camera/SpringCamera'
-import { createFlightState, tickFlight } from './physics/FlightPhysics'
+import { createFlightState, tickFlight, triggerTumble } from './physics/FlightPhysics'
 import { WorldBuilder, terrainY } from './world/WorldBuilder'
 import { loadNatureAssets } from './world/AssetLoader'
 import { createBirdMesh, getWings } from './world/BirdMesh'
@@ -18,7 +18,8 @@ import { ChatInput } from './ui/ChatInput'
 import { askName } from './ui/NameInput'
 import { DayNightCycle } from './world/DayNightCycle'
 import { SpireReward } from './world/SpireReward'
-import { GemManager } from './world/GemManager'
+import { GemManager, GEM_TOTAL } from './world/GemManager'
+import { EggManager } from './weapons/EggManager'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
@@ -158,6 +159,9 @@ async function main() {
 
   // Gems — 5 hidden collectibles, localStorage persistence
   const gemManager = new GemManager(scene)
+  gemManager.onCollect = (idx) => {
+    net.send({ type: 'gem', fromId: '', fromName: myName, idx })
+  }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
   const FOV_DEFAULT_RAD = CAMERA.DEFAULT_FOV * Math.PI / 180
@@ -179,10 +183,14 @@ async function main() {
 
   // Network
   const net = new WebSocketClient()
+
+  // Eggs
+  const eggManager = new EggManager(scene, net)
   let myColor = '#88aaff'
 
   net.on('welcome', (msg: any) => {
     if (msg.color) myColor = msg.color
+    if (msg.id) eggManager.setMyId(msg.id)
     if (msg.players) {
       for (const p of msg.players) {
         remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')
@@ -210,6 +218,20 @@ async function main() {
 
   net.on('trace', (msg: any) => {
     traceManager.drop(msg.x, msg.y, msg.z, msg.text, msg.color, msg.name)
+  })
+
+  net.on('egg', (msg: any) => {
+    eggManager.addRemote(msg.x, msg.y, msg.z, msg.vx, msg.vy, msg.vz, msg.fromId)
+  })
+
+  net.on('gem', (_msg: any) => {
+    // Another player collected a gem — brief flash + HUD hint
+    const el = document.getElementById('flash')
+    if (el) {
+      el.style.background = 'rgba(255,255,200,0.3)'
+      el.style.opacity = '0.4'
+      setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 300)
+    }
   })
 
   // Chat — T to open, Enter to drop trace at current position
@@ -248,6 +270,12 @@ async function main() {
     const inp = chatInput.active
       ? { pitchUp:false, pitchDown:false, bankLeft:false, bankRight:false, flap:false, egg:false, rocket:false, chat:false, joyX:0, joyY:0 }
       : input.get()
+
+    // Egg fire
+    if (inp.egg && !chatInput.active) {
+      eggManager.fire(flight.position.x, flight.position.y, flight.position.z, flight.yaw, flight.pitch)
+    }
+
     const camYaw = springCam.getCamYaw()
     const wasLanded = flight.landed
     tickFlight(flight, inp, dt, terrainY, camYaw)
@@ -335,6 +363,11 @@ async function main() {
     // Gems
     gemManager.tick(dt, flight.position.x, flight.position.y, flight.position.z)
 
+    // Eggs — onHit triggers local tumble
+    eggManager.tick(dt, flight.position.x, flight.position.y, flight.position.z, () => {
+      triggerTumble(flight)
+    })
+
     // Remote players
     remotePlayers.tick(dt)
 
@@ -352,7 +385,7 @@ async function main() {
         lines.push(`alt ${Math.floor(flight.position.y)}`)
       lines.push(timeLabel(dayNight.getT()))
       const gems = gemManager.getCount()
-      if (gems > 0) lines.push(`gems ${gems}/5`)
+      if (gems > 0) lines.push(`gems ${gems}/${GEM_TOTAL}`)
       hud.textContent = lines.join('\n')
     }
 

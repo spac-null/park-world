@@ -3,7 +3,7 @@ import { terrainY } from './WorldBuilder'
 
 const STORAGE_KEY   = 'park-world-gems'
 const COLLECT_DIST2 = 3 * 3
-const TOTAL         = 5
+export const GEM_TOTAL = 5
 
 // [x, z, height above terrain, label]
 const GEM_SPOTS: [number, number, number, string][] = [
@@ -33,6 +33,7 @@ interface Gem {
 export class GemManager {
   private gems: Gem[] = []
   private collected: Set<number>
+  onCollect: ((idx: number) => void) | null = null
 
   constructor(scene: Scene) {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -82,6 +83,7 @@ export class GemManager {
         this.collected.add(g.idx)
         localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
         this.flash(g.idx)
+        this.onCollect?.(g.idx)
       }
     }
   }

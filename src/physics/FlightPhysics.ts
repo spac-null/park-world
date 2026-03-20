@@ -206,7 +206,7 @@ export function tickFlight(state: FlightState, input: InputState, dt: number, te
   }
 }
 
-function triggerTumble(state: FlightState) {
+export function triggerTumble(state: FlightState) {
   state.tumbling = true
   state.tumbleTimer = PHYSICS.TUMBLE_DURATION
   // Freeze on crash — N64 stun
