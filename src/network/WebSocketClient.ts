@@ -7,11 +7,12 @@ export class WebSocketClient {
   private ws: WebSocket | null = null
   private handlers = new Map<string, Handler[]>()
   private sendTimer = 0
-  private reconnectDelay = 2000
+  private reconnectAttempts = 0
 
   connect() {
     try {
       this.ws = new WebSocket(NETWORK.WS_URL)
+      this.ws.onopen = () => { this.reconnectAttempts = 0 }
       this.ws.onmessage = e => {
         try {
           const msg: NetworkMessage = JSON.parse(e.data)
@@ -20,11 +21,15 @@ export class WebSocketClient {
         } catch (e) { console.warn('WS parse error:', e) }
       }
       this.ws.onclose = () => {
-        setTimeout(() => this.connect(), this.reconnectDelay)
+        const delay = Math.min(2000 * 2 ** this.reconnectAttempts, 30000)
+        this.reconnectAttempts++
+        setTimeout(() => this.connect(), delay)
       }
       this.ws.onerror = (e) => { console.warn('WS error:', e); this.ws?.close() }
     } catch {
-      setTimeout(() => this.connect(), this.reconnectDelay)
+      const delay = Math.min(2000 * 2 ** this.reconnectAttempts, 30000)
+      this.reconnectAttempts++
+      setTimeout(() => this.connect(), delay)
     }
   }
 
