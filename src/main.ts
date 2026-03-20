@@ -53,7 +53,9 @@ async function main() {
   // World (sync structure first, Kenney assets async after)
   const world = new WorldBuilder(scene)
   world.build()
-  loadNatureAssets(scene).then(assets => world.buildNature(assets))
+  loadNatureAssets(scene)
+    .then(assets => world.buildNature(assets))
+    .catch(e => console.warn('Asset load failed:', e))
 
   // Mark key structures as shadow casters, terrain as receiver
   const casterNames = ['spire', 'rimN', 'rimE', 'rimS', 'rimW',
@@ -142,7 +144,7 @@ async function main() {
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
   const FOV_DEFAULT_RAD = CAMERA.DEFAULT_FOV * Math.PI / 180
-  const FOV_MAX_RAD     = 75 * Math.PI / 180
+  const FOV_MAX_RAD     = CAMERA.DIVE_FOV * Math.PI / 180
 
   // Cache bird child meshes — avoid getChildMeshes() allocation every frame
   const birdChildMeshes = birdRoot.getChildMeshes()
@@ -165,6 +167,7 @@ async function main() {
 
   net.on('welcome', (msg: any) => {
     if (msg.color) myColor = msg.color
+    if (msg.name)  myName  = msg.name
     if (msg.players) {
       for (const p of msg.players) {
         remotePlayers.add(p.id, p.name || 'bird', p.color || '#aaaaaa')

@@ -26,6 +26,11 @@ export class DayNightCycle {
   private scene: Scene
   private sun: DirectionalLight
   private amb: HemisphericLight
+  private _sky = new Color4(0, 0, 0, 1)
+  private _fog = new Color3(0, 0, 0)
+  private _sunCol = new Color3(0, 0, 0)
+  private _ambCol = new Color3(0, 0, 0)
+  private _dir = new Vector3(0, -1, 0)
 
   constructor(scene: Scene, sun: DirectionalLight, amb: HemisphericLight) {
     this.scene = scene
@@ -40,16 +45,21 @@ export class DayNightCycle {
 
   private apply() {
     const k = this.interp(this.t)
-    this.scene.clearColor = new Color4(k.sky[0], k.sky[1], k.sky[2], 1)
-    this.scene.fogColor   = new Color3(k.fog[0], k.fog[1], k.fog[2])
+    this._sky.set(k.sky[0], k.sky[1], k.sky[2], 1)
+    this._fog.set(k.fog[0], k.fog[1], k.fog[2])
+    this._sunCol.set(k.sun[0], k.sun[1], k.sun[2])
+    this._ambCol.set(k.amb[0], k.amb[1], k.amb[2])
+    this.scene.clearColor = this._sky
+    this.scene.fogColor   = this._fog
     this.scene.fogDensity = k.fogDensity
-    this.sun.diffuse      = new Color3(k.sun[0], k.sun[1], k.sun[2])
+    this.sun.diffuse      = this._sunCol
     this.sun.intensity    = k.sunIntensity
-    this.amb.diffuse      = new Color3(k.amb[0], k.amb[1], k.amb[2])
+    this.amb.diffuse      = this._ambCol
     this.amb.intensity    = k.ambIntensity
 
     const angle = this.t * Math.PI * 2
-    this.sun.direction = new Vector3(-Math.sin(angle), -(Math.abs(Math.cos(angle)) + 0.3), -Math.cos(angle))
+    this._dir.set(-Math.sin(angle), -(Math.abs(Math.cos(angle)) + 0.3), -Math.cos(angle))
+    this.sun.direction = this._dir
   }
 
   private interp(t: number) {

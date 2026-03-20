@@ -17,12 +17,12 @@ export class WebSocketClient {
           const msg: NetworkMessage = JSON.parse(e.data)
           const handlers = this.handlers.get(msg.type) || []
           handlers.forEach(h => h(msg))
-        } catch {}
+        } catch (e) { console.warn('WS parse error:', e) }
       }
       this.ws.onclose = () => {
         setTimeout(() => this.connect(), this.reconnectDelay)
       }
-      this.ws.onerror = () => this.ws?.close()
+      this.ws.onerror = (e) => { console.warn('WS error:', e); this.ws?.close() }
     } catch {
       setTimeout(() => this.connect(), this.reconnectDelay)
     }
