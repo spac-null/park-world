@@ -75,6 +75,14 @@
         width: 100%;
       }
       #chat-input::placeholder { color: rgba(255,255,255,0.3); }
+      #flash {
+        position: fixed; inset: 0;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s ease-out;
+        z-index: 300;
+      }
       #name-overlay {
         display: none;
         position: fixed; inset: 0;
@@ -122,6 +130,7 @@
     <div id="btn-egg">EGG</div>
     <div id="btn-rocket">🚀</div>
     <div id="hud"></div>
+    <div id="flash"></div>
     <div id="name-overlay">
       <div id="name-card">
         <div id="name-title">what's your name?</div>

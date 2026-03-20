@@ -17,6 +17,7 @@ import { WebSocketClient } from './network/WebSocketClient'
 import { ChatInput } from './ui/ChatInput'
 import { askName } from './ui/NameInput'
 import { DayNightCycle } from './world/DayNightCycle'
+import { SpireReward } from './world/SpireReward'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
@@ -148,8 +149,11 @@ async function main() {
   dustSystem.colorDead = new Color4(0.5, 0.4, 0.3, 0)
   dustSystem.gravity = new Vector3(0, -6, 0)
 
-  // NPC flock — 8 birds, can fly sideline, backward, orbit
+  // NPC flock — 8 birds, home zones + scatter on flythrough
   const npcFlock = new NpcFlock(scene, 8)
+
+  // Spire top reward — pulsing ring + first-arrival flash
+  const spireReward = new SpireReward(scene)
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
   const FOV_DEFAULT_RAD = CAMERA.DEFAULT_FOV * Math.PI / 180
@@ -308,6 +312,9 @@ async function main() {
 
     // NPC flock — pass scalars, no Vector3 alloc
     npcFlock.tick(dt, flight.position.x, flight.position.y, flight.position.z, flight.yaw, now)
+
+    // Spire reward
+    spireReward.tick(dt, flight.position.x, flight.position.y, flight.position.z)
 
     // Remote players
     remotePlayers.tick(dt)
