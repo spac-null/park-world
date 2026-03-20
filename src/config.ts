@@ -69,5 +69,5 @@ export const WEAPONS = {
 }
 
 export const DAY_NIGHT = {
-  CYCLE_DURATION: 120,    // seconds per full cycle
+  CYCLE_DURATION: 180,    // seconds per full cycle — longer so day feels lasting
 }

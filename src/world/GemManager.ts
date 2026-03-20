@@ -2,14 +2,14 @@ import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { terrainY } from './WorldBuilder'
 
 const STORAGE_KEY   = 'park-world-gems'
-const COLLECT_DIST2 = 3 * 3
+const COLLECT_DIST2 = 4.5 * 4.5   // wider — easier for a child to grab
 export const GEM_TOTAL = 5
 
 // [x, z, height above terrain, label]
 const GEM_SPOTS: [number, number, number, string][] = [
   [   2,    2, 62, 'spire'],        // spire top — above reward ring
   [   0,  -73, 18, 'mountain'],     // cave exit (north face, behind waterfall)
-  [ 110,  -40, 28, 'canopy'],       // highest canopy pillar top (h=30 → top at +28)
+  [ 110,  -40, 28, 'canopy'],       // highest canopy pillar top
   [   0,  -88, 58, 'summit'],       // mountain peak
   [ -90,   10,  8, 'scrapyard'],    // inside scrapyard, low and hidden
 ]
@@ -24,6 +24,7 @@ const GEM_COLORS = [
 
 interface Gem {
   mesh: ReturnType<typeof MeshBuilder.CreateSphere>
+  beam: ReturnType<typeof MeshBuilder.CreateCylinder>
   mat: StandardMaterial
   collected: boolean
   phase: number
@@ -42,20 +43,37 @@ export class GemManager {
     for (let i = 0; i < GEM_SPOTS.length; i++) {
       const [gx, gz, gh, _label] = GEM_SPOTS[i]
       const gy = terrainY(gx, gz) + gh
+      const color = GEM_COLORS[i % GEM_COLORS.length]
 
-      const mesh = MeshBuilder.CreateSphere(`gem${i}`, { diameter: 1.2, segments: 6 }, scene)
+      // Gem — bigger so it's visible from a distance
+      const mesh = MeshBuilder.CreateSphere(`gem${i}`, { diameter: 1.8, segments: 6 }, scene)
       mesh.position.set(gx, gy, gz)
       mesh.isPickable = false
 
       const mat = new StandardMaterial(`gemMat${i}`, scene)
-      mat.emissiveColor = GEM_COLORS[i % GEM_COLORS.length]
+      mat.emissiveColor = color.clone()
       mat.disableLighting = true
       mesh.material = mat
 
-      const collected = this.collected.has(i)
-      if (collected) mesh.isVisible = false
+      // Beacon pillar — tall thin glowing column visible from across the map
+      // Bloom turns this into a coloured light shaft
+      const beam = MeshBuilder.CreateCylinder(`gemBeam${i}`, {
+        height: 70, diameter: 0.5, tessellation: 6,
+      }, scene)
+      beam.position.set(gx, gy + 35, gz)
+      beam.isPickable = false
 
-      this.gems.push({ mesh, mat, collected, phase: i * 1.3, idx: i })
+      const beamMat = new StandardMaterial(`gemBeamMat${i}`, scene)
+      beamMat.emissiveColor = color.clone()
+      beamMat.disableLighting = true
+      beamMat.alpha = 0.45
+      beamMat.backFaceCulling = false
+      beam.material = beamMat
+
+      const collected = this.collected.has(i)
+      if (collected) { mesh.isVisible = false; beam.isVisible = false }
+
+      this.gems.push({ mesh, beam, mat, collected, phase: i * 1.3, idx: i })
     }
   }
 
@@ -68,7 +86,7 @@ export class GemManager {
       g.mesh.rotation.y = g.phase
       g.mesh.position.y += Math.sin(g.phase * 0.7) * 0.008
 
-      // Pulse emissive
+      // Pulse emissive on gem
       const pulse = 0.7 + Math.sin(g.phase * 1.4) * 0.3
       const base = GEM_COLORS[g.idx % GEM_COLORS.length]
       g.mat.emissiveColor.set(base.r * pulse, base.g * pulse, base.b * pulse)
@@ -80,6 +98,7 @@ export class GemManager {
       if (dx * dx + dy * dy + dz * dz < COLLECT_DIST2) {
         g.collected = true
         g.mesh.isVisible = false
+        g.beam.isVisible = false
         this.collected.add(g.idx)
         localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.collected]))
         this.flash(g.idx)

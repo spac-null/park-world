@@ -24,6 +24,7 @@ import { RocketManager } from './weapons/RocketManager'
 import { CAMERA, PHYSICS, WORLD } from './config'
 
 async function main() {
+  const glideMode = new URLSearchParams(window.location.search).has('glide')
   const myName = await askName()
 
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
@@ -111,6 +112,7 @@ async function main() {
 
   // Flight state — spawn above center
   const flight = createFlightState(0, 30, -20)
+  let autoFlapTimer = 0
   springCam.snap(flight)  // instant correct height — prevents first-frame upward-look (terrain backface culled)
 
   // Squash/stretch state for landing
@@ -258,13 +260,14 @@ async function main() {
   let hudFrame = 0
 
   function timeLabel(t: number): string {
-    if (t < 0.15 || t >= 0.85) return 'night'
-    if (t < 0.22) return 'dawn'
-    if (t < 0.35) return 'morning'
-    if (t < 0.65) return 'day'
-    if (t < 0.78) return 'afternoon'
+    if (t >= 0.87 && t < 0.94) return 'night'
+    if (t >= 0.94) return 'dawn'
+    if (t < 0.70) return 'day'
+    if (t < 0.80) return 'afternoon'
     return 'dusk'
   }
+
+  let hintTimer = glideMode ? 10 : 0
 
   // Game loop
   let last = performance.now()
@@ -276,6 +279,17 @@ async function main() {
     const inp = chatInput.active
       ? { pitchUp:false, pitchDown:false, bankLeft:false, bankRight:false, flap:false, egg:false, rocket:false, chat:false, joyX:0, joyY:0 }
       : input.get()
+
+    if (glideMode && hintTimer > 0) hintTimer -= dt
+
+    // Glide mode — auto-flap so daughter only needs to steer
+    if (glideMode) {
+      autoFlapTimer -= dt
+      if (autoFlapTimer <= 0) {
+        inp.flap = true
+        autoFlapTimer = 0.55
+      }
+    }
 
     // Weapon fire
     if (inp.egg && !chatInput.active) {
@@ -401,6 +415,8 @@ async function main() {
       lines.push(timeLabel(dayNight.getT()))
       const gems = gemManager.getCount()
       if (gems > 0) lines.push(`gems ${gems}/${GEM_TOTAL}`)
+      if (glideMode && hintTimer > 0) lines.push('fly to the glowing beams!')
+      if (glideMode) lines.push('glide')
       hud.textContent = lines.join('\n')
     }
 

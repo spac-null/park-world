@@ -12,13 +12,15 @@ interface Keyframe {
   fogDensity: number
 }
 
+// Day=70% of cycle (0.00–0.70), dusk=10%, night=7%, dawn=13%
+// At 180s: day≈126s, dusk≈18s, night≈12s, dawn≈24s
 const KF: Keyframe[] = [
-  { t: 0.00, sky:[0.10,0.08,0.18], fog:[0.10,0.08,0.18], sun:[0.60,0.55,0.80], amb:[0.15,0.12,0.25], sunIntensity:0.3, ambIntensity:0.4, fogDensity:WORLD.FOG_DENSITY_NIGHT },
-  { t: 0.20, sky:[0.72,0.40,0.20], fog:[0.72,0.40,0.20], sun:[1.00,0.75,0.45], amb:[0.60,0.40,0.25], sunIntensity:0.7, ambIntensity:0.6, fogDensity:0.008 },
-  { t: 0.35, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
-  { t: 0.65, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
-  { t: 0.80, sky:[0.60,0.28,0.12], fog:[0.60,0.28,0.12], sun:[1.00,0.60,0.30], amb:[0.50,0.30,0.18], sunIntensity:0.6, ambIntensity:0.5, fogDensity:0.009 },
-  { t: 1.00, sky:[0.10,0.08,0.18], fog:[0.10,0.08,0.18], sun:[0.60,0.55,0.80], amb:[0.15,0.12,0.25], sunIntensity:0.3, ambIntensity:0.4, fogDensity:WORLD.FOG_DENSITY_NIGHT },
+  { t: 0.00, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
+  { t: 0.70, sky:[0.32,0.58,0.90], fog:[0.32,0.58,0.90], sun:[1.00,0.96,0.82], amb:[0.55,0.60,0.65], sunIntensity:1.1, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
+  { t: 0.80, sky:[0.62,0.28,0.10], fog:[0.62,0.28,0.10], sun:[1.00,0.60,0.28], amb:[0.50,0.28,0.15], sunIntensity:0.6, ambIntensity:0.5, fogDensity:0.008 },
+  { t: 0.87, sky:[0.08,0.06,0.16], fog:[0.08,0.06,0.16], sun:[0.55,0.50,0.75], amb:[0.12,0.10,0.22], sunIntensity:0.3, ambIntensity:0.35, fogDensity:WORLD.FOG_DENSITY_NIGHT },
+  { t: 0.94, sky:[0.08,0.06,0.16], fog:[0.08,0.06,0.16], sun:[0.55,0.50,0.75], amb:[0.12,0.10,0.22], sunIntensity:0.3, ambIntensity:0.35, fogDensity:WORLD.FOG_DENSITY_NIGHT },
+  { t: 1.00, sky:[0.27,0.53,0.87], fog:[0.27,0.53,0.87], sun:[1.00,0.98,0.90], amb:[0.55,0.60,0.65], sunIntensity:1.2, ambIntensity:0.7, fogDensity:WORLD.FOG_DENSITY_DAY },
 ]
 
 export class DayNightCycle {
@@ -87,11 +89,11 @@ export class DayNightCycle {
     this.sun.direction = this._dir
   }
 
-  // Stars: invisible during day, fade in at dusk (t≈0.78), full at night, fade out at dawn (t≈0.22)
+  // Stars: fade in through dusk (t=0.80→0.87), full at night, fade out through dawn (t=0.94→1.00)
   private starAlpha(t: number): number {
-    if (t < 0.10 || t > 0.90) return 1
-    if (t >= 0.10 && t < 0.22) return 1 - (t - 0.10) / 0.12
-    if (t > 0.78 && t <= 0.90) return (t - 0.78) / 0.12
+    if (t >= 0.87 && t < 0.94) return 1
+    if (t >= 0.80 && t < 0.87) return (t - 0.80) / 0.07
+    if (t >= 0.94) return 1 - (t - 0.94) / 0.06
     return 0
   }
 
