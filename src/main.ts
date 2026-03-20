@@ -18,6 +18,7 @@ import { ChatInput } from './ui/ChatInput'
 import { askName } from './ui/NameInput'
 import { DayNightCycle } from './world/DayNightCycle'
 import { SpireReward } from './world/SpireReward'
+import { GemManager } from './world/GemManager'
 import { CAMERA, PHYSICS } from './config'
 
 async function main() {
@@ -154,6 +155,9 @@ async function main() {
 
   // Spire top reward — pulsing ring + first-arrival flash
   const spireReward = new SpireReward(scene)
+
+  // Gems — 5 hidden collectibles, localStorage persistence
+  const gemManager = new GemManager(scene)
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
   const FOV_DEFAULT_RAD = CAMERA.DEFAULT_FOV * Math.PI / 180
@@ -315,6 +319,9 @@ async function main() {
 
     // Spire reward
     spireReward.tick(dt, flight.position.x, flight.position.y, flight.position.z)
+
+    // Gems
+    gemManager.tick(dt, flight.position.x, flight.position.y, flight.position.z)
 
     // Remote players
     remotePlayers.tick(dt)
