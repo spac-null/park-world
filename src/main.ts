@@ -172,24 +172,54 @@ async function main() {
   let gemMessage = ''
   let gemMessageTimer = 0
   const gemPopup = document.getElementById('gem-popup')!
+  const flash = document.getElementById('flash')!
+
+  // Web Audio — rising 3-note arpeggio, no audio files needed
+  let audioCtx: AudioContext | null = null
+  function playCollectSound(idx: number) {
+    try {
+      if (!audioCtx) audioCtx = new AudioContext()
+      if (audioCtx.state === 'suspended') audioCtx.resume()
+      const ctx = audioCtx
+      // Major arpeggio G5→C6→E6, pitch shifts slightly per gem
+      const root = 784 * (1 + idx * 0.04)
+      const notes = [root, root * 1.336, root * 1.682]
+      notes.forEach((freq, i) => {
+        const osc  = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        const t = ctx.currentTime + i * 0.12
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.4, t + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55)
+        osc.start(t); osc.stop(t + 0.55)
+      })
+    } catch (_) {}
+  }
+
   gemManager.onCollect = (idx) => {
     net.send({ type: 'gem', fromId: '', fromName: myName, idx })
+    const count = gemManager.getCount()
+    // Color3.toHexString() already includes '#'
+    const color = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
     // HUD line
-    gemMessage = `gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
+    gemMessage = `gem ${count} of ${GEM_TOTAL}!`
     gemMessageTimer = 3
-    // Big screen popup
-    const hex = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
-    gemPopup.textContent = `gem ${gemManager.getCount()} of ${GEM_TOTAL}!`
-    gemPopup.style.color = `#${hex}`
+    // Big popup
+    gemPopup.textContent = `gem ${count} of ${GEM_TOTAL}!`
+    gemPopup.style.color = color
     gemPopup.style.opacity = '1'
     gemPopup.style.display = 'block'
-    setTimeout(() => { gemPopup.style.opacity = '0' }, 1000)
-    setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 1800)
-    // Flash
-    const flash = document.getElementById('flash')!
-    flash.style.background = `#${hex}`
+    setTimeout(() => { gemPopup.style.opacity = '0' }, 1200)
+    setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 2000)
+    // Screen flash
+    flash.style.background = color
     flash.style.opacity = '0.5'
     setTimeout(() => { flash.style.opacity = '0'; flash.style.background = '#fff' }, 500)
+    // Sound
+    playCollectSound(idx)
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
