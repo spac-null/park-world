@@ -70,7 +70,7 @@ export class WorldBuilder {
       // tree_blocks + tree_fat most for Banjo feel, mix in others
       const pick  = Math.floor(rand2() * 10)
       const treeIdx = pick < 4 ? 0 : pick < 7 ? 1 : pick < 8 ? 3 : pick < 9 ? 4 : 2
-      const scale = 3.5 + rand2() * 2.5
+      const scale = 18 + rand2() * 14
       place(assets.trees[treeIdx], x, y, z, scale, rand2() * Math.PI * 2)
     }
 
@@ -83,7 +83,7 @@ export class WorldBuilder {
       if (Math.sqrt(x*x + z*z) < 10) continue
       const y     = terrainY(x, z)
       const pick  = Math.floor(rand() * 5)
-      const scale = 1.5 + rand() * 2.5
+      const scale = 8 + rand() * 10
       place(assets.rocks[pick], x, y, z, scale, rand() * Math.PI * 2)
     }
 
@@ -96,7 +96,7 @@ export class WorldBuilder {
       if (Math.sqrt(x*x + z*z) < 10) continue
       const y     = terrainY(x, z)
       const pick  = Math.floor(randB() * 7)
-      const scales = [1.8, 2.2, 1.5, 1.2, 1.2, 1.8, 2.0]
+      const scales = [8, 10, 6, 4, 4, 7, 9]  // mushrooms, stumps, flowers, grass, log
       place(assets.extras[pick], x, y, z, scales[pick], randB() * Math.PI * 2)
     }
 
