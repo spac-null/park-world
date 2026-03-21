@@ -1,6 +1,8 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { WORLD } from '../config'
 
+
+
 const STORAGE_KEY  = 'park-world-spire-reached'
 const TRIGGER_Y    = WORLD.SPIRE_HEIGHT - 6   // y > 54
 const TRIGGER_R2   = 15 * 15                   // x²+z² < 225
@@ -12,6 +14,7 @@ export class SpireReward {
   private triggered = false
   private alreadyReached: boolean
   private _wasParty = false
+  private _allGemsTimer = 0
 
   constructor(scene: Scene) {
     this.alreadyReached = !!localStorage.getItem(STORAGE_KEY)
@@ -54,6 +57,17 @@ export class SpireReward {
     }
     this._wasParty = party
 
+    // All-gems rainbow ring
+    if (this._allGemsTimer > 0) {
+      this._allGemsTimer -= dt
+      const h = Date.now() * 0.002
+      this.mat.emissiveColor.set(
+        0.5 + 0.5 * Math.sin(h),
+        0.5 + 0.5 * Math.sin(h + Math.PI * 2/3),
+        0.5 + 0.5 * Math.sin(h + Math.PI * 4/3),
+      )
+    }
+
     // First-arrival trigger — local player reaches top for first time this session
     if (!this.triggered && localAtTop) {
       this.triggered = true
@@ -64,6 +78,10 @@ export class SpireReward {
       }
       this.mat.emissiveColor = new Color3(1.0, 1.0, 0.6)
     }
+  }
+
+  triggerAllGems() {
+    this._allGemsTimer = 10
   }
 
   private flash(color: string) {

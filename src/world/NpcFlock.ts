@@ -1,4 +1,4 @@
-import { Scene, Vector3, TransformNode, Color3, Quaternion } from '@babylonjs/core'
+import { Scene, Vector3, TransformNode, Color3, Quaternion, MeshBuilder, DynamicTexture, StandardMaterial, Mesh } from '@babylonjs/core'
 import { createBirdMesh } from './BirdMesh'
 import { terrainY } from './WorldBuilder'
 import { PHYSICS } from '../config'
@@ -29,6 +29,20 @@ const HOMES: [number, number, number][] = [
 const PLAYER_ATTRACT_DIST  = 75   // beyond this, birds drift home
 const PLAYER_ATTRACT_DIST2 = PLAYER_ATTRACT_DIST * PLAYER_ATTRACT_DIST
 const SCATTER_DIST         = 8    // player this close triggers scatter impulse
+
+const HINT_DIST2    = 12 * 12
+const HINT_DURATION = 4
+const HINT_COOLDOWN = 20
+const HINTS = [
+  'the canopy pillars hide secrets',
+  'fly east to find the floating stones',
+  'a glow rises near the old gate',
+  'the scrapyard has low-flying paths',
+  'the spire top rewards the brave',
+  'arches mark the way through',
+  'the highest pillar holds a view',
+  'follow the lights north to south',
+]
 const SCATTER_DIST2        = SCATTER_DIST * SCATTER_DIST
 const SCATTER_IMPULSE      = 14   // velocity kick magnitude
 
@@ -48,6 +62,9 @@ interface NpcBird {
   homeZ: number
   perched: boolean
   perchTimer: number
+  hintPlane: Mesh | null
+  hintCooldown: number
+  hintTimer: number
 }
 
 const SPEED        = 9
@@ -61,8 +78,10 @@ const PERCH_DIST2  = 8 * 8   // settle when this close to home XZ
 export class NpcFlock {
   private birds: NpcBird[] = []
   private _tx = 0; private _ty = 0; private _tz = 0
+  private _scene: Scene
 
   constructor(scene: Scene, count = 8) {
+    this._scene = scene
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2
       const r     = 25 + Math.random() * 20
@@ -81,6 +100,7 @@ export class NpcFlock {
         role, side: i % 2 === 0 ? 1 : -1,
         homeX: hx, homeY, homeZ: hz,
         perched: false, perchTimer: 0,
+        hintPlane: null, hintCooldown: i * 2.5, hintTimer: 0,
       })
       mesh.rotationQuaternion = new Quaternion()
     }
@@ -104,6 +124,22 @@ export class NpcFlock {
         b.vel.y += bpy * inv + 4
         b.vel.z += bpz * inv
         b.perched = false
+      }
+
+      // Hint bubble
+      if (b.hintCooldown > 0) b.hintCooldown -= dt
+      if (b.hintTimer > 0) {
+        b.hintTimer -= dt
+        if (b.hintTimer <= 0 && b.hintPlane) b.hintPlane.isVisible = false
+      }
+      if (b.hintCooldown <= 0 && b.hintTimer <= 0) {
+        const hx = b.pos.x - px, hy = b.pos.y - py, hz = b.pos.z - pz
+        if (hx*hx + hy*hy + hz*hz < HINT_DIST2) {
+          if (!b.hintPlane) b.hintPlane = this._createHintBubble(HINTS[i % HINTS.length])
+          b.hintPlane.isVisible = true
+          b.hintTimer = HINT_DURATION
+          b.hintCooldown = HINT_COOLDOWN
+        }
       }
 
       // Perched — sit still until timer runs out or player gets close
@@ -248,9 +284,56 @@ export class NpcFlock {
 
     b.mesh.position.set(b.pos.x, b.pos.y + bob, b.pos.z)
     Quaternion.RotationYawPitchRollToRef(b.facingYaw, pitch, bank, b.mesh.rotationQuaternion!)
+
+    // Hint bubble — position manually, never parent (billboard + parent = broken)
+    if (b.hintPlane && b.hintTimer > 0) {
+      b.hintPlane.position.set(b.pos.x, b.pos.y + 3.5, b.pos.z)
+    }
+  }
+
+  private _createHintBubble(text: string): Mesh {
+    const tex = new DynamicTexture(`hintTex_${Math.random()}`, { width: 256, height: 80 }, this._scene, false)
+    const ctx2d = tex.getContext() as unknown as CanvasRenderingContext2D
+    ctx2d.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx2d.fillRect(0, 0, 256, 80)
+    ctx2d.fillStyle = '#111'
+    ctx2d.font = '14px sans-serif'
+    ctx2d.textAlign = 'center'
+    ctx2d.textBaseline = 'middle'
+    // Word wrap
+    const words = text.split(' ')
+    const lines: string[] = []
+    let line = ''
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word
+      if (ctx2d.measureText(test).width > 230 && line) { lines.push(line); line = word }
+      else line = test
+    }
+    if (line) lines.push(line)
+    const lineH = 20, startY = 40 - (lines.length - 1) * lineH / 2
+    for (let i = 0; i < lines.length; i++) ctx2d.fillText(lines[i], 128, startY + i * lineH)
+    tex.update()
+    tex.hasAlpha = true
+
+    const plane = MeshBuilder.CreatePlane(`hintPlane_${Math.random()}`, { width: 4, height: 4*(80/256) }, this._scene)
+    plane.billboardMode = Mesh.BILLBOARDMODE_ALL
+    plane.isPickable = false
+
+    const mat = new StandardMaterial(`hintMat_${Math.random()}`, this._scene)
+    mat.diffuseTexture = tex
+    mat.useAlphaFromDiffuseTexture = true
+    mat.emissiveColor = new Color3(1, 1, 1)
+    mat.disableLighting = true
+    mat.backFaceCulling = false
+    plane.material = mat
+    plane.isVisible = false
+    return plane
   }
 
   dispose() {
-    for (const b of this.birds) b.mesh.dispose()
+    for (const b of this.birds) {
+      b.mesh.dispose()
+      if (b.hintPlane) b.hintPlane.dispose()
+    }
   }
 }

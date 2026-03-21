@@ -19,6 +19,9 @@ import { askName } from './ui/NameInput'
 import { DayNightCycle } from './world/DayNightCycle'
 import { SpireReward } from './world/SpireReward'
 import { GemManager, GEM_TOTAL } from './world/GemManager'
+import { NoteManager, NOTE_TOTAL } from './world/NoteManager'
+import { ZoneManager } from './world/ZoneManager'
+import { ZoneMusicPlayer } from './world/ZoneMusicPlayer'
 import { EggManager } from './weapons/EggManager'
 import { RocketManager } from './weapons/RocketManager'
 import { GEM_COLORS } from './world/GemManager'
@@ -131,6 +134,9 @@ async function main() {
   let squashTimer = 0
   let bobPhase = 0
 
+  // Collect spin animation — triggered by gem or note grab
+  let collectSpinTimer = 0
+
   // Body inertia roll — underdamped spring, overshoots opposite direction on bank
   let visualRoll = 0
   let rollVel    = 0
@@ -166,6 +172,26 @@ async function main() {
   dustSystem.colorDead = new Color4(0.5, 0.4, 0.3, 0)
   dustSystem.gravity = new Vector3(0, -6, 0)
 
+  // Rainbow burst — all-gems payoff, 200 particles
+  const rainbowBurst = new ParticleSystem('rainbow', 200, scene)
+  rainbowBurst.particleTexture = dustTex   // reuse radial gradient
+  rainbowBurst.emitter = new Vector3(0, 0, 0)
+  rainbowBurst.minSize = 0.3; rainbowBurst.maxSize = 1.2
+  rainbowBurst.minLifeTime = 0.8; rainbowBurst.maxLifeTime = 1.5
+  rainbowBurst.emitRate = 2000
+  rainbowBurst.targetStopDuration = 0.1
+  rainbowBurst.disposeOnStop = false
+  rainbowBurst.minEmitPower = 8; rainbowBurst.maxEmitPower = 20
+  rainbowBurst.direction1 = new Vector3(-1, 1, -1)
+  rainbowBurst.direction2 = new Vector3(1, 2, 1)
+  rainbowBurst.gravity = new Vector3(0, -5, 0)
+  rainbowBurst.addColorGradient(0,   new Color4(1, 0.2, 0.2, 1))
+  rainbowBurst.addColorGradient(0.2, new Color4(1, 0.8, 0,   1))
+  rainbowBurst.addColorGradient(0.4, new Color4(0.2, 1, 0.2, 1))
+  rainbowBurst.addColorGradient(0.6, new Color4(0.2, 0.5, 1, 1))
+  rainbowBurst.addColorGradient(0.8, new Color4(0.8, 0.2, 1, 1))
+  rainbowBurst.addColorGradient(1,   new Color4(1, 0.3, 0.3, 0))
+
   // NPC flock — 8 birds, home zones + scatter on flythrough
   const npcFlock = new NpcFlock(scene, 8)
 
@@ -174,6 +200,13 @@ async function main() {
 
   // Gems — 5 hidden collectibles, localStorage persistence
   const gemManager = new GemManager(scene)
+
+  // Notes — 60 spinning collectibles, 10 per zone
+  const noteManager = new NoteManager(scene, glideMode)
+
+  // Zone color identity + ambient music
+  const zoneManager = new ZoneManager(scene)
+  const zoneMusicPlayer = new ZoneMusicPlayer(glideMode)
   let gemMessage = ''
   let gemMessageTimer = 0
   const gemPopup = document.getElementById('gem-popup')!
@@ -204,27 +237,85 @@ async function main() {
     } catch (_) {}
   }
 
+  function playFanfare() {
+    try {
+      if (!audioCtx) audioCtx = new AudioContext()
+      if (audioCtx.state === 'suspended') audioCtx.resume()
+      const ctx = audioCtx
+      const chord = [523.25, 659.25, 783.99, 1046.5]  // C5 E5 G5 C6
+      // Simultaneous chord
+      chord.forEach(freq => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sine'; osc.frequency.value = freq
+        const t = ctx.currentTime
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.2, t + 0.05)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5)
+        osc.start(t); osc.stop(t + 1.5)
+      })
+      // Arpeggio after
+      chord.forEach((freq, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sine'; osc.frequency.value = freq
+        const t = ctx.currentTime + 0.2 + i * 0.1
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.3, t + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
+        osc.start(t); osc.stop(t + 0.6)
+      })
+    } catch (_) {}
+  }
+
   gemManager.onCollect = (idx) => {
+    collectSpinTimer = 0.3
     net.send({ type: 'gem', fromId: '', fromName: myName, idx })
     const count = gemManager.getCount()
-    // Color3.toHexString() already includes '#'
-    const color = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
-    // HUD line
-    gemMessage = `gem ${count} of ${GEM_TOTAL}!`
-    gemMessageTimer = 3
-    // Big popup
-    gemPopup.textContent = `gem ${count} of ${GEM_TOTAL}!`
-    gemPopup.style.color = color
-    gemPopup.style.opacity = '1'
-    gemPopup.style.display = 'block'
-    setTimeout(() => { gemPopup.style.opacity = '0' }, 1200)
-    setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 2000)
-    // Screen flash
-    flash.style.background = color
-    flash.style.opacity = '0.5'
-    setTimeout(() => { flash.style.opacity = '0'; flash.style.background = '#fff' }, 500)
-    // Sound
     playCollectSound(idx)
+
+    if (count === GEM_TOTAL) {
+      // All 5 gems — fanfare
+      playFanfare()
+      gemMessage = `all ${GEM_TOTAL} gems!`
+      gemMessageTimer = 4
+      gemPopup.textContent = `all ${GEM_TOTAL} gems!`
+      gemPopup.style.color = '#ffd700'
+      gemPopup.style.opacity = '1'
+      gemPopup.style.display = 'block'
+      setTimeout(() => { gemPopup.style.opacity = '0' }, 3000)
+      setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 3800)
+      // Two screen flashes
+      flash.style.background = '#fff'; flash.style.opacity = '0.8'
+      setTimeout(() => {
+        flash.style.opacity = '0'
+        setTimeout(() => {
+          flash.style.background = 'rgba(255,200,0,0.6)'; flash.style.opacity = '0.8'
+          setTimeout(() => { flash.style.opacity = '0'; flash.style.background = '#fff' }, 300)
+        }, 200)
+      }, 200)
+      // Rainbow burst
+      ;(rainbowBurst.emitter as Vector3).copyFromFloats(flight.position.x, flight.position.y, flight.position.z)
+      rainbowBurst.reset(); rainbowBurst.start()
+      spireReward.triggerAllGems()
+    } else {
+      // Color3.toHexString() already includes '#'
+      const color = GEM_COLORS[idx % GEM_COLORS.length].toHexString()
+      gemMessage = `gem ${count} of ${GEM_TOTAL}!`
+      gemMessageTimer = 3
+      gemPopup.textContent = `gem ${count} of ${GEM_TOTAL}!`
+      gemPopup.style.color = color
+      gemPopup.style.opacity = '1'
+      gemPopup.style.display = 'block'
+      setTimeout(() => { gemPopup.style.opacity = '0' }, 1200)
+      setTimeout(() => { gemPopup.style.display = 'none'; gemPopup.style.opacity = '1' }, 2000)
+      flash.style.background = color; flash.style.opacity = '0.5'
+      setTimeout(() => { flash.style.opacity = '0'; flash.style.background = '#fff' }, 500)
+    }
+  }
+
+  noteManager.onCollect = (_idx) => {
+    collectSpinTimer = 0.3
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
@@ -403,6 +494,12 @@ async function main() {
     const squashY = 1 - squashT * 0.35        // compress Y
     const squashXZ = 1 + squashT * 0.2        // expand XZ
 
+    // Collect spin — 2 full rotations + 1.4× scale pulse over 0.3s
+    collectSpinTimer = Math.max(0, collectSpinTimer - dt)
+    const cst = collectSpinTimer / 0.3
+    const collectSpinYaw = (1 - cst) * Math.PI * 4
+    const collectScale = collectSpinTimer > 0 ? 1 + 0.4 * Math.sin((1 - cst) * Math.PI) : 1
+
     // N64 crash flicker — skip loop when not tumbling (common case)
     if (flight.tumbling) {
       const flickerOn = Math.floor(now / 70) % 2 === 0
@@ -428,13 +525,20 @@ async function main() {
     visualRoll += rollVel * dt
 
     Quaternion.RotationYawPitchRollToRef(
-      flight.yaw, flight.pitch * 0.6, visualRoll,
+      flight.yaw + collectSpinYaw, flight.pitch * 0.6, visualRoll,
       birdRoot.rotationQuaternion!,
     )
-    birdRoot.scaling.set(squashXZ, squashY, squashXZ)
+    birdRoot.scaling.set(squashXZ * collectScale, squashY * collectScale, squashXZ * collectScale)
 
     // Day/night cycle
     dayNight.tick(dt)
+
+    // Zone color identity — MUST run after dayNight.tick()
+    zoneManager.tick(dt, flight.position.x, flight.position.y, flight.position.z)
+    zoneMusicPlayer.tick(dt, zoneManager.getCurrentZoneId())
+
+    // Notes
+    noteManager.tick(dt, flight.position.x, flight.position.y, flight.position.z)
 
     // Traces
     traceManager.tick(dt)
@@ -477,6 +581,8 @@ async function main() {
       lines.push(timeLabel(dayNight.getT()))
       const gems = gemManager.getCount()
       if (gems > 0) lines.push(`gems ${gems}/${GEM_TOTAL}`)
+      const notes = noteManager.getCount()
+      if (notes > 0) lines.push(`notes ${notes}/${NOTE_TOTAL}`)
       if (gemMessageTimer > 0) lines.push(gemMessage)
       else if (glideMode && hintTimer > 0) lines.push('fly to the glowing beams!')
       if (glideMode) lines.push('glide')
