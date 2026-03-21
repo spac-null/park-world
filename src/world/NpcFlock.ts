@@ -171,7 +171,7 @@ export class NpcFlock {
           if (b.pos.y < groundY + 5) {
             b.perched = true
             b.perchTimer = 3 + Math.random() * 4   // 3–7 seconds on the ground
-            b.pos.y = groundY
+            b.pos.y = terrainY(b.homeX, b.homeZ) + 2
             b.vel.set(0, 0, 0)
             this.syncMesh(b, dt, px, py, pz)
             continue
@@ -333,7 +333,15 @@ export class NpcFlock {
   dispose() {
     for (const b of this.birds) {
       b.mesh.dispose()
-      if (b.hintPlane) b.hintPlane.dispose()
+      if (b.hintPlane) {
+        const mat = b.hintPlane.material
+        if (mat) {
+          const stdMat = mat as StandardMaterial
+          if (stdMat.diffuseTexture) stdMat.diffuseTexture.dispose()
+          mat.dispose()
+        }
+        b.hintPlane.dispose()
+      }
     }
   }
 }

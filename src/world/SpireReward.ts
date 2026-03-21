@@ -40,20 +40,22 @@ export class SpireReward {
     const localAtTop = py > TRIGGER_Y && (px * px + pz * pz) < TRIGGER_R2
     const party = localAtTop && remoteAtSpire > 0
 
-    // Pulse — fast party mode when 2+ players at top together
-    const pulseRate = party ? 10 : 2.2
-    const pulseAmp  = party ? 0.15 : 0.08
-    this.bobPhase += dt * pulseRate
-    this.ring.scaling.setAll(1 + Math.sin(this.bobPhase) * pulseAmp)
+    if (this._allGemsTimer <= 0) {
+      // Pulse — fast party mode when 2+ players at top together
+      const pulseRate = party ? 10 : 2.2
+      const pulseAmp  = party ? 0.15 : 0.08
+      this.bobPhase += dt * pulseRate
+      this.ring.scaling.setAll(1 + Math.sin(this.bobPhase) * pulseAmp)
 
-    // Party moment — ring goes bright warm gold, screen flashes gold
-    if (party && !this._wasParty) {
-      this.mat.emissiveColor = new Color3(1.0, 0.92, 0.3)
-      this.flash('rgba(255,230,80,0.45)')
-    } else if (!party && this.triggered) {
-      this.mat.emissiveColor = this.alreadyReached
-        ? new Color3(0.6, 0.5, 0.15)
-        : new Color3(1.0, 1.0, 0.6)
+      // Party moment — ring goes bright warm gold, screen flashes gold
+      if (party && !this._wasParty) {
+        this.mat.emissiveColor = new Color3(1.0, 0.92, 0.3)
+        this.flash('rgba(255,230,80,0.45)')
+      } else if (!party && this.triggered) {
+        this.mat.emissiveColor = this.alreadyReached
+          ? new Color3(0.6, 0.5, 0.15)
+          : new Color3(1.0, 1.0, 0.6)
+      }
     }
     this._wasParty = party
 

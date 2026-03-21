@@ -37,6 +37,7 @@ const FADE_TAU  = 0.23   // setTargetAtTime τ — 3τ ≈ 0.7s crossfade
 export class ZoneMusicPlayer {
   private _ctx: AudioContext | null = null
   private _channels: Map<ZoneId, Channel> | null = null
+  private _ctxFailed = false
   private _activeZone: ZoneId = 'center'
   private _glideMode: boolean
 
@@ -45,7 +46,8 @@ export class ZoneMusicPlayer {
   }
 
   private _setup() {
-    if (!this._ctx || this._channels) return
+    if (this._ctx && this._channels) return
+    if (!this._ctx) return
     this._channels = new Map()
 
     for (const [id, def] of Object.entries(ZONE_DEFS) as [ZoneId, ZoneDef][]) {
@@ -75,8 +77,9 @@ export class ZoneMusicPlayer {
   }
 
   tick(dt: number, zoneId: string) {
+    if (this._ctxFailed) return
     if (!this._ctx) {
-      try { this._ctx = new AudioContext() } catch (_) { return }
+      try { this._ctx = new AudioContext() } catch (_) { this._ctxFailed = true; return }
     }
     if (!this._channels) this._setup()
     if (!this._channels) return

@@ -2,7 +2,6 @@ import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { terrainY } from './WorldBuilder'
 
 const STORAGE_KEY = 'park-world-notes'
-const COLLECT_R2 = 2.5 * 2.5
 export const NOTE_TOTAL = 60
 
 // [x, yOffset, z] — actual Y = terrainY(x,z) + yOffset
@@ -72,8 +71,9 @@ export class NoteManager {
       n.mesh.rotation.y = n.phase
       n.mesh.position.y = n.wy + Math.sin(n.phase * 0.8) * 0.3
 
-      const dx = px - n.wx, dy = py - n.wy, dz = pz - n.wz
-      if (dx*dx + dy*dy + dz*dz < COLLECT_R2) this._collect(n)
+      const dx = px - n.wx, dz = pz - n.wz
+      const dy = py - n.wy
+      if (dx*dx + dz*dz < 2.5*2.5 && dy*dy < 4.0*4.0) this._collect(n)
     }
   }
 

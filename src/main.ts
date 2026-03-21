@@ -269,7 +269,7 @@ async function main() {
   }
 
   gemManager.onCollect = (idx) => {
-    collectSpinTimer = 0.3
+    collectSpinTimer = Math.max(collectSpinTimer, 0.3)
     net.send({ type: 'gem', fromId: '', fromName: myName, idx })
     const count = gemManager.getCount()
     playCollectSound(idx)
@@ -315,7 +315,7 @@ async function main() {
   }
 
   noteManager.onCollect = (_idx) => {
-    collectSpinTimer = 0.3
+    collectSpinTimer = Math.max(collectSpinTimer, 0.3)
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame

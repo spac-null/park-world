@@ -39,10 +39,13 @@ export class ZoneManager {
     let bestId = 'center', bestW = 0
 
     for (const z of ZONES) {
-      if (z.minY !== undefined && py < z.minY) continue
+      if (z.minY !== undefined && py < z.minY - 15) continue
       const dx = px - z.cx, dz = pz - z.cz
       const d = Math.sqrt(dx*dx + dz*dz)
-      const w = Math.max(0, 1 - d / z.r)
+      let w = Math.max(0, 1 - d / z.r)
+      if (z.minY !== undefined && py < z.minY) {
+        w *= Math.min(1, (py - (z.minY - 15)) / 15)
+      }
       if (w <= 0) continue
       tw += w
       tfr += z.fr * w; tfg += z.fg * w; tfb += z.fb * w
