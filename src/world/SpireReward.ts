@@ -1,7 +1,9 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { WORLD } from '../config'
 
-
+const BRIGHT_GOLD = [1.0, 1.0, 0.6] as const
+const PARTY_GOLD = [1.0, 0.92, 0.3] as const
+const DIM_GOLD = [0.6, 0.5, 0.15] as const
 
 const STORAGE_KEY  = 'park-world-spire-reached'
 const TRIGGER_Y    = WORLD.SPIRE_HEIGHT - 6   // y > 54
@@ -32,7 +34,7 @@ export class SpireReward {
     this.mat.disableLighting = true
     this.ring.material = this.mat
 
-    if (this.alreadyReached) this.mat.emissiveColor = new Color3(0.6, 0.5, 0.15)
+    if (this.alreadyReached) this._setEmissive(DIM_GOLD)
   }
 
   // remoteAtSpire: number of remote players currently at spire top
@@ -49,12 +51,10 @@ export class SpireReward {
 
       // Party moment — ring goes bright warm gold, screen flashes gold
       if (party && !this._wasParty) {
-        this.mat.emissiveColor = new Color3(1.0, 0.92, 0.3)
+        this._setEmissive(PARTY_GOLD)
         this.flash('rgba(255,230,80,0.45)')
       } else if (!party && this.triggered) {
-        this.mat.emissiveColor = this.alreadyReached
-          ? new Color3(0.6, 0.5, 0.15)
-          : new Color3(1.0, 1.0, 0.6)
+        this._setEmissive(this.alreadyReached ? DIM_GOLD : BRIGHT_GOLD)
       }
     }
     this._wasParty = party
@@ -78,12 +78,16 @@ export class SpireReward {
         localStorage.setItem(STORAGE_KEY, '1')
         this.alreadyReached = true
       }
-      this.mat.emissiveColor = new Color3(1.0, 1.0, 0.6)
+      this._setEmissive(BRIGHT_GOLD)
     }
   }
 
   triggerAllGems() {
     this._allGemsTimer = 10
+  }
+
+  private _setEmissive([r, g, b]: readonly [number, number, number]) {
+    this.mat.emissiveColor.set(r, g, b)
   }
 
   private flash(color: string) {

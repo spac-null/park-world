@@ -22,12 +22,14 @@ const ZONES: ZoneDef[] = [
 ]
 
 const LERP_RATE = 2.5
+const DEFAULT_FOG = [0.54, 0.74, 0.91] as const
+const DEFAULT_AMB = [0.82, 0.75, 0.60] as const
 
 export class ZoneManager {
   private _scene: Scene
   // current fog/ambient as floats (avoid Color3 alloc every frame)
-  private cfr = 0.54; private cfg = 0.74; private cfb = 0.91
-  private car = 0.82; private cag = 0.75; private cab = 0.60
+  private cfr = DEFAULT_FOG[0]; private cfg = DEFAULT_FOG[1]; private cfb = DEFAULT_FOG[2]
+  private car = DEFAULT_AMB[0]; private cag = DEFAULT_AMB[1]; private cab = DEFAULT_AMB[2]
   private _zoneId = 'center'
 
   constructor(scene: Scene) { this._scene = scene }
@@ -41,7 +43,9 @@ export class ZoneManager {
     for (const z of ZONES) {
       if (z.minY !== undefined && py < z.minY - 15) continue
       const dx = px - z.cx, dz = pz - z.cz
-      const d = Math.sqrt(dx*dx + dz*dz)
+      const d2 = dx*dx + dz*dz
+      if (d2 > z.r * z.r) continue
+      const d = Math.sqrt(d2)
       let w = Math.max(0, 1 - d / z.r)
       if (z.minY !== undefined && py < z.minY) {
         w *= Math.min(1, (py - (z.minY - 15)) / 15)
@@ -53,17 +57,22 @@ export class ZoneManager {
       if (w > bestW) { bestW = w; bestId = z.id }
     }
 
-    if (tw > 0) {
-      const inv = 1 / tw
-      const t = Math.min(LERP_RATE * dt, 1)
-      this.cfr += (tfr*inv - this.cfr) * t
-      this.cfg += (tfg*inv - this.cfg) * t
-      this.cfb += (tfb*inv - this.cfb) * t
-      this.car += (tar*inv - this.car) * t
-      this.cag += (tag*inv - this.cag) * t
-      this.cab += (tab*inv - this.cab) * t
-      this._zoneId = bestId
-    }
+    const t = Math.min(LERP_RATE * dt, 1)
+    const inv = tw > 0 ? 1 / tw : 0
+    const fogR = tw > 0 ? tfr * inv : DEFAULT_FOG[0]
+    const fogG = tw > 0 ? tfg * inv : DEFAULT_FOG[1]
+    const fogB = tw > 0 ? tfb * inv : DEFAULT_FOG[2]
+    const ambR = tw > 0 ? tar * inv : DEFAULT_AMB[0]
+    const ambG = tw > 0 ? tag * inv : DEFAULT_AMB[1]
+    const ambB = tw > 0 ? tab * inv : DEFAULT_AMB[2]
+
+    this.cfr += (fogR - this.cfr) * t
+    this.cfg += (fogG - this.cfg) * t
+    this.cfb += (fogB - this.cfb) * t
+    this.car += (ambR - this.car) * t
+    this.cag += (ambG - this.cag) * t
+    this.cab += (ambB - this.cab) * t
+    this._zoneId = tw > 0 ? bestId : 'center'
 
     this._scene.fogColor.set(this.cfr, this.cfg, this.cfb)
     this._scene.clearColor.set(this.cfr, this.cfg, this.cfb, 1)

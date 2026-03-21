@@ -496,9 +496,10 @@ async function main() {
 
     // Collect spin — 2 full rotations + 1.4× scale pulse over 0.3s
     collectSpinTimer = Math.max(0, collectSpinTimer - dt)
-    const cst = collectSpinTimer / 0.3
-    const collectSpinYaw = (1 - cst) * Math.PI * 4
-    const collectScale = collectSpinTimer > 0 ? 1 + 0.4 * Math.sin((1 - cst) * Math.PI) : 1
+    const hasCollectSpin = collectSpinTimer > 0
+    const cst = hasCollectSpin ? collectSpinTimer / 0.3 : 0
+    const collectSpinYaw = hasCollectSpin ? (1 - cst) * Math.PI * 4 : 0
+    const collectScale = hasCollectSpin ? 1 + 0.4 * Math.sin((1 - cst) * Math.PI) : 1
 
     // N64 crash flicker — skip loop when not tumbling (common case)
     if (flight.tumbling) {
@@ -582,9 +583,10 @@ async function main() {
       const gems = gemManager.getCount()
       if (gems > 0) lines.push(`gems ${gems}/${GEM_TOTAL}`)
       const notes = noteManager.getCount()
+      // Keep notes hidden at 0/60 so the HUD does not spoil them before first discovery.
       if (notes > 0) lines.push(`notes ${notes}/${NOTE_TOTAL}`)
       if (gemMessageTimer > 0) lines.push(gemMessage)
-      else if (glideMode && hintTimer > 0) lines.push('fly to the glowing beams!')
+      else if (glideMode && hintTimer > 0) lines.push('fly to the beams and spinning stars!')
       if (glideMode) lines.push('glide')
       hud.textContent = lines.join('\n')
     }

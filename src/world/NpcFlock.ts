@@ -100,6 +100,8 @@ export class NpcFlock {
         role, side: i % 2 === 0 ? 1 : -1,
         homeX: hx, homeY, homeZ: hz,
         perched: false, perchTimer: 0,
+        // Bird 0 keeps an immediate cooldown, but its initial orbit spawn still starts
+        // at least ~32 units from the player spawn at (0, 30, -20), well outside hint range.
         hintPlane: null, hintCooldown: i * 2.5, hintTimer: 0,
       })
       mesh.rotationQuaternion = new Quaternion()
@@ -287,7 +289,7 @@ export class NpcFlock {
 
     // Hint bubble — position manually, never parent (billboard + parent = broken)
     if (b.hintPlane && b.hintTimer > 0) {
-      b.hintPlane.position.set(b.pos.x, b.pos.y + 3.5, b.pos.z)
+      b.hintPlane.position.set(b.pos.x, b.mesh.position.y + 2.5, b.pos.z)
     }
   }
 
@@ -313,7 +315,7 @@ export class NpcFlock {
     const lineH = 20, startY = 40 - (lines.length - 1) * lineH / 2
     for (let i = 0; i < lines.length; i++) ctx2d.fillText(lines[i], 128, startY + i * lineH)
     tex.update()
-    tex.hasAlpha = true
+    tex.hasAlpha = true  // Set before binding as diffuseTexture so billboard alpha is honored.
 
     const plane = MeshBuilder.CreatePlane(`hintPlane_${Math.random()}`, { width: 4, height: 4*(80/256) }, this._scene)
     plane.billboardMode = Mesh.BILLBOARDMODE_ALL

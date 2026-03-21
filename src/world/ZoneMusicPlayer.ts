@@ -46,8 +46,7 @@ export class ZoneMusicPlayer {
   }
 
   private _setup() {
-    if (this._ctx && this._channels) return
-    if (!this._ctx) return
+    if (!this._ctx || this._channels) return
     this._channels = new Map()
 
     for (const [id, def] of Object.entries(ZONE_DEFS) as [ZoneId, ZoneDef][]) {
@@ -83,16 +82,20 @@ export class ZoneMusicPlayer {
     }
     if (!this._channels) this._setup()
     if (!this._channels) return
-    if (this._ctx!.state === 'suspended') void this._ctx!.resume()
+    if (this._ctx.state === 'suspended') void this._ctx.resume().catch(() => {})
 
     const target = (ZONE_DEFS[zoneId as ZoneId] ? zoneId : 'center') as ZoneId
-    const ctx = this._ctx!
+    const ctx = this._ctx
     const targetGain = this._glideMode ? BASE_GAIN * 1.5 : BASE_GAIN
 
     // Zone crossfade
     if (target !== this._activeZone) {
       const oldCh = this._channels.get(this._activeZone)!
       const newCh = this._channels.get(target)!
+      const newDef = ZONE_DEFS[target]
+      newCh.step = 0
+      newCh.stepTimer = 0
+      newCh.osc.frequency.setTargetAtTime(newDef.notes[0], ctx.currentTime, 0.02)
       oldCh.gain.gain.setTargetAtTime(0,          ctx.currentTime, FADE_TAU)
       newCh.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, FADE_TAU)
       this._activeZone = target
