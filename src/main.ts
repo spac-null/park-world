@@ -314,8 +314,9 @@ async function main() {
     }
   }
 
-  noteManager.onCollect = (_idx) => {
+  noteManager.onCollect = (idx) => {
     collectSpinTimer = Math.max(collectSpinTimer, 0.3)
+    net.send({ type: 'note', fromId: '', fromName: myName, idx })
   }
 
   // Pre-computed FOV constants — work in radians, skip deg↔rad every frame
@@ -391,6 +392,16 @@ async function main() {
       el.style.background = 'rgba(255,255,200,0.3)'
       el.style.opacity = '0.4'
       setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 300)
+    }
+  })
+
+  net.on('note', (_msg: any) => {
+    // Another player collected a note — faint warm flash
+    const el = document.getElementById('flash')
+    if (el) {
+      el.style.background = 'rgba(255,240,180,0.2)'
+      el.style.opacity = '0.3'
+      setTimeout(() => { el.style.opacity = '0'; el.style.background = '#fff' }, 200)
     }
   })
 
