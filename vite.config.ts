@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/park-world/',
+  base: '/',
   build: {
     target: 'esnext',
     outDir: 'dist',

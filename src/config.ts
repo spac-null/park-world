@@ -53,7 +53,7 @@ export const WORLD = {
 }
 
 export const NETWORK = {
-  WS_URL: 'wss://park.jaschablume.nl',
+  WS_URL: 'wss://ws.park.jaschablume.nl',
   SEND_INTERVAL: 100,     // ms between move sends
 }
 

@@ -2,8 +2,8 @@
 
 Multiplayer 3D browser game. You fly a bird around a caldera with other people.
 
-**Live**: https://spac-null.github.io/park-world/
-**Server**: wss://park.jaschablume.nl
+**Live**: https://park.jaschablume.nl
+**Server**: wss://ws.park.jaschablume.nl
 **Stack**: Babylon.js + TypeScript + Vite → GitHub Pages
 
 ---
